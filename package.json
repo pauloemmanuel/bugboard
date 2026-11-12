@@ -1,6 +1,6 @@
 {
   "name": "bugboard",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Local bug board with MCP for AI agents and a shared browser UI",
   "license": "MIT",
   "author": "Paulo Emmanuel",
@@ -34,6 +34,7 @@
     "@types/react": "^19.1.4",
     "@types/react-dom": "^19.1.5",
     "@vitejs/plugin-react": "^4.4.1",
+    "lucide-react": "^1.72.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "tsx": "^4.19.4",

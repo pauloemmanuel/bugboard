@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-11-11
+
+### Changed
+
+- Platform marks use Lucide (`Monitor` for web, `Tablet` for iPad) and Simple Icons paths (Apple, Android) in a 20px badge
+- Use case stack sits on a left border; status badges include Check, X, Eye, and CircleDashed
+
 ## [0.2.0] - 2026-11-11
 
 ### Added

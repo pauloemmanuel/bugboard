@@ -146,12 +146,23 @@ main {
   display: flex;
   align-items: center;
   gap: 10px;
+  color: var(--bb-text-strong);
 }
 
 .platform-icon {
   display: inline-flex;
-  color: var(--bb-text-strong);
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  color: currentColor;
+  border: 2px solid var(--bb-border);
+  background: var(--bb-chip-bg);
   flex-shrink: 0;
+}
+
+.platform-icon svg {
+  display: block;
 }
 
 .head-badges {
@@ -176,8 +187,9 @@ main {
 
 .card-child {
   margin-top: 10px;
-  margin-left: 14px;
+  margin-left: 0;
   border-width: 1px;
+  border-left: 3px solid var(--bb-border);
   padding: 12px 14px;
   background: var(--bb-bg);
 }
@@ -189,8 +201,9 @@ main {
 
 .child-stack {
   margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px dashed var(--bb-border);
+  margin-left: 6px;
+  padding: 4px 0 2px 16px;
+  border-left: 3px solid var(--bb-border);
 }
 
 ul.prep-list {
@@ -206,6 +219,9 @@ ul.prep-list {
 }
 
 .badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;

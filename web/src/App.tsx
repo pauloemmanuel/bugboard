@@ -1,3 +1,4 @@
+import { Check, CircleDashed, Eye, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import type { Bug, BugStatus, Sheet, Stats } from "./api";
 import {
@@ -27,6 +28,23 @@ const STATUS_LABEL: Record<BugStatus, string> = {
   ok: "Ok",
   falhou: "Falhou",
 };
+
+const STATUS_ICON: Record<BugStatus, typeof Check> = {
+  fazendo: CircleDashed,
+  testar: Eye,
+  ok: Check,
+  falhou: X,
+};
+
+function StatusBadge({ status }: { status: BugStatus }) {
+  const Icon = STATUS_ICON[status];
+  return (
+    <span className={`badge ${status}`}>
+      <Icon size={14} strokeWidth={2.5} aria-hidden />
+      {STATUS_LABEL[status]}
+    </span>
+  );
+}
 
 function childProgressText(bug: Bug): string | null {
   const kids = bug.children?.filter((c) => c.kind === "usecase") ?? [];
@@ -166,7 +184,7 @@ function UseCaseCard({
           <span className="uc-n">#{bug.n}</span> {bug.title}
           {bug.round > 1 ? ` (rodada ${bug.round})` : ""}
         </div>
-        <span className={`badge ${bug.status}`}>{STATUS_LABEL[bug.status]}</span>
+        <StatusBadge status={bug.status} />
       </div>
       <BugCardBody bug={bug} />
       <CardActions
@@ -208,7 +226,7 @@ function JourneyCard({
         </div>
         <div className="head-badges">
           {progress && <span className="progress-chip">{progress}</span>}
-          <span className={`badge ${bug.status}`}>{STATUS_LABEL[bug.status]}</span>
+          <StatusBadge status={bug.status} />
         </div>
       </div>
       <BugCardBody bug={bug} />
