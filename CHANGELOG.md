@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-11-12
+
+### Changed
+
+- Web UI: tab switch and pass/fail no longer blank the board with a full reload spinner
+- Pass, fail, reopen, and ready-to-test update cards optimistically and refresh stats in the background
+- Scroll position is kept when data updates in place
+
 ## [0.3.1] - 2026-11-12
 
 ### Changed

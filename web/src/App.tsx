@@ -1,5 +1,5 @@
 import { Check, CircleDashed, Eye, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Bug, BugStatus, Sheet, Stats } from "./api";
 import {
   archiveSheet,
@@ -64,6 +64,32 @@ function filterJourneys(journeys: Bug[], filter: Filter): Bug[] {
       return { ...j, children: matchingKids };
     })
     .filter((j): j is Bug => j !== null);
+}
+
+function mergeBugIntoTree(bugs: Bug[], updated: Bug): Bug[] {
+  return bugs.map((j) => {
+    if (j.id === updated.id) {
+      return { ...j, ...updated, children: updated.children ?? j.children };
+    }
+    if (j.children?.some((c) => c.id === updated.id)) {
+      return {
+        ...j,
+        children: j.children.map((c) => (c.id === updated.id ? { ...c, ...updated } : c)),
+      };
+    }
+    return j;
+  });
+}
+
+function patchBugInTree(bugs: Bug[], id: string, patch: Partial<Bug>): Bug[] {
+  return bugs.map((j) => {
+    if (j.id === id) return { ...j, ...patch };
+    if (!j.children?.some((c) => c.id === id)) return j;
+    return {
+      ...j,
+      children: j.children.map((c) => (c.id === id ? { ...c, ...patch } : c)),
+    };
+  });
 }
 
 function CardActions({
@@ -303,68 +329,157 @@ export function App() {
   const [filter, setFilter] = useState<Filter>("todos");
   const [newSheetName, setNewSheetName] = useState("");
   const [showNewSheet, setShowNewSheet] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sheetToArchive, setSheetToArchive] = useState<Sheet | null>(null);
   const [archiving, setArchiving] = useState(false);
   const activeRef = useRef<string | null>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
   const pendingTabFocus = useRef(false);
+  const scrollSnapshot = useRef<number | null>(null);
+  const bugsSnapshot = useRef<Bug[] | null>(null);
   activeRef.current = activeSheetId;
 
-  const reload = useCallback(async (sheetId: string | null) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const s = await fetchSheets();
-      setSheets(s);
-      const sid = sheetId && s.some((x) => x.id === sheetId) ? sheetId : (s[0]?.id ?? null);
-      setActiveSheetId(sid);
-      if (sid) {
-        const [b, st] = await Promise.all([fetchBugs(sid), fetchStats(sid)]);
+  const markScrollPreserve = useCallback(() => {
+    scrollSnapshot.current = window.scrollY;
+  }, []);
+
+  useLayoutEffect(() => {
+    if (scrollSnapshot.current !== null) {
+      const y = scrollSnapshot.current;
+      scrollSnapshot.current = null;
+      window.scrollTo(0, y);
+    }
+  }, [bugs, stats, activeSheetId]);
+
+  const loadSheetData = useCallback(
+    async (sid: string | null, opts?: { refreshSheets?: boolean; initial?: boolean }) => {
+      if (!opts?.initial) markScrollPreserve();
+      setError(null);
+      try {
+        let resolved = sid;
+        if (opts?.refreshSheets || opts?.initial) {
+          const s = await fetchSheets();
+          setSheets(s);
+          resolved = sid && s.some((x) => x.id === sid) ? sid : (s[0]?.id ?? null);
+        }
+        if (resolved !== null) setActiveSheetId(resolved);
+        if (resolved) {
+          const [b, st] = await Promise.all([fetchBugs(resolved), fetchStats(resolved)]);
+          setBugs(b);
+          setStats(st);
+        } else if (opts?.refreshSheets || opts?.initial) {
+          setBugs([]);
+          setStats(await fetchStats());
+        }
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Erro ao carregar");
+      } finally {
+        if (opts?.initial) setInitialLoading(false);
+      }
+    },
+    [markScrollPreserve],
+  );
+
+  const switchSheet = useCallback(
+    async (sheetId: string) => {
+      if (sheetId === activeSheetId) return;
+      setActiveSheetId(sheetId);
+      setError(null);
+      try {
+        const [b, st] = await Promise.all([fetchBugs(sheetId), fetchStats(sheetId)]);
         setBugs(b);
         setStats(st);
-      } else {
-        setBugs([]);
-        setStats(await fetchStats());
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Erro ao carregar");
       }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Erro ao carregar");
-    } finally {
-      setLoading(false);
+    },
+    [activeSheetId, markScrollPreserve],
+  );
+
+  const refreshStats = useCallback(async (sid: string | null) => {
+    if (!sid) return;
+    try {
+      setStats(await fetchStats(sid));
+    } catch {
+      /* keep prior stats */
     }
   }, []);
 
   useEffect(() => {
-    void reload(null);
-  }, [reload]);
+    void loadSheetData(null, { refreshSheets: true, initial: true });
+  }, [loadSheetData]);
 
   useEffect(() => {
-    if (loading || !pendingTabFocus.current) return;
+    if (initialLoading || !pendingTabFocus.current) return;
     pendingTabFocus.current = false;
     const root = tabsRef.current;
     const target = root?.querySelector<HTMLElement>(".tab.active") ?? root;
     target?.focus();
-  }, [loading, activeSheetId, sheets]);
+  }, [initialLoading, activeSheetId, sheets]);
 
   const visible = filterJourneys(bugs, filter);
 
   const handlers = {
     onReady: async (bug: Bug) => {
-      await patchBug(bug.id, { status: "testar" });
-      await reload(activeSheetId);
+      bugsSnapshot.current = bugs;
+      markScrollPreserve();
+      setBugs((prev) => patchBugInTree(prev, bug.id, { status: "testar" }));
+      try {
+        const updated = await patchBug(bug.id, { status: "testar" });
+        setBugs((prev) => mergeBugIntoTree(prev, updated));
+        await refreshStats(activeSheetId);
+      } catch {
+        setBugs(bugsSnapshot.current ?? bugs);
+        setError("Não foi possível atualizar o card.");
+      } finally {
+        bugsSnapshot.current = null;
+      }
     },
     onReopen: async (bug: Bug) => {
-      await patchBug(bug.id, { status: "fazendo" });
-      await reload(activeSheetId);
+      bugsSnapshot.current = bugs;
+      markScrollPreserve();
+      setBugs((prev) => patchBugInTree(prev, bug.id, { status: "fazendo" }));
+      try {
+        const updated = await patchBug(bug.id, { status: "fazendo" });
+        setBugs((prev) => mergeBugIntoTree(prev, updated));
+        await refreshStats(activeSheetId);
+      } catch {
+        setBugs(bugsSnapshot.current ?? bugs);
+        setError("Não foi possível atualizar o card.");
+      } finally {
+        bugsSnapshot.current = null;
+      }
     },
     onPass: async (bug: Bug) => {
-      await passBug(bug.id);
-      await reload(activeSheetId);
+      bugsSnapshot.current = bugs;
+      markScrollPreserve();
+      setBugs((prev) => patchBugInTree(prev, bug.id, { status: "ok" }));
+      try {
+        const updated = await passBug(bug.id);
+        setBugs((prev) => mergeBugIntoTree(prev, updated));
+        await refreshStats(activeSheetId);
+      } catch {
+        setBugs(bugsSnapshot.current ?? bugs);
+        setError("Não foi possível marcar como passou.");
+      } finally {
+        bugsSnapshot.current = null;
+      }
     },
     onFail: async (bug: Bug) => {
-      await failBug(bug.id);
-      await reload(activeSheetId);
+      bugsSnapshot.current = bugs;
+      markScrollPreserve();
+      setBugs((prev) => patchBugInTree(prev, bug.id, { status: "falhou" }));
+      try {
+        const updated = await failBug(bug.id);
+        setBugs((prev) => mergeBugIntoTree(prev, updated));
+        await refreshStats(activeSheetId);
+      } catch {
+        setBugs(bugsSnapshot.current ?? bugs);
+        setError("Não foi possível marcar como falhou.");
+      } finally {
+        bugsSnapshot.current = null;
+      }
     },
   };
 
@@ -379,10 +494,12 @@ export function App() {
       const current = activeRef.current;
       pendingTabFocus.current = true;
       setSheetToArchive(null);
-      await reload(current === target.id ? neighborId : current);
+      await loadSheetData(current === target.id ? neighborId : current, {
+        refreshSheets: true,
+      });
     } catch {
       setSheetToArchive(null);
-      await reload(activeRef.current);
+      await loadSheetData(activeRef.current, { refreshSheets: true });
       setError("Não foi possível arquivar a aba. Tente de novo.");
     } finally {
       setArchiving(false);
@@ -395,7 +512,7 @@ export function App() {
     const sheet = await createSheet(name);
     setNewSheetName("");
     setShowNewSheet(false);
-    await reload(sheet.id);
+    await loadSheetData(sheet.id, { refreshSheets: true });
   }
 
   return (
@@ -420,7 +537,7 @@ export function App() {
               <button
                 type="button"
                 className={`tab${s.id === activeSheetId ? " active" : ""}`}
-                onClick={() => void reload(s.id)}
+                onClick={() => void switchSheet(s.id)}
               >
                 {s.name}
               </button>
@@ -471,7 +588,7 @@ export function App() {
           ))}
         </div>
 
-        {loading ? (
+        {initialLoading ? (
           <p>Carregando...</p>
         ) : visible.length === 0 ? (
           <div className="empty">Nenhum card ainda. Os agentes criam via MCP.</div>
