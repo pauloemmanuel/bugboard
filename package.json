@@ -1,6 +1,6 @@
 {
   "name": "bugboard",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Local bug board with MCP for AI agents and a shared browser UI",
   "license": "MIT",
   "author": "Paulo Emmanuel",

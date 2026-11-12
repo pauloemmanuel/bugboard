@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-11-12
+
+### Changed
+
+- Archive tab dialog: title and button say Arquivar, Cancelar and Esc are blocked while the request runs, errors show a plain message and reload the list, focus moves to the active tab afterward, close button hit area is 44px
+
 ## [0.3.0] - 2026-11-12
 
 ### Added

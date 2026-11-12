@@ -162,9 +162,10 @@ main {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  margin-right: 4px;
+  position: relative;
+  width: 44px;
+  height: 44px;
+  margin: -4px 0;
   border: 0;
   border-radius: 999px;
   background: transparent;
@@ -172,8 +173,22 @@ main {
   cursor: pointer;
 }
 
-.tab-close:hover {
+.tab-close::before {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border-radius: 999px;
+}
+
+.tab-close svg {
+  position: relative;
+}
+
+.tab-close:hover::before {
   background: var(--bb-danger);
+}
+
+.tab-close:hover {
   color: var(--bb-danger-text);
 }
 

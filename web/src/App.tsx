@@ -276,19 +276,19 @@ function ArchiveSheetDialog({
       aria-labelledby="archive-sheet-title"
       onCancel={(e) => {
         e.preventDefault();
-        onCancel();
+        if (!busy) onCancel();
       }}
     >
-      <h2 id="archive-sheet-title">Excluir aba?</h2>
+      <h2 id="archive-sheet-title">Arquivar aba?</h2>
       <p>
-        A aba <strong>{sheet?.name}</strong> some do board. Os cards ficam guardados no banco local.
+        A aba <strong>{sheet?.name}</strong> sai da lista de abas.
       </p>
       <div className="inline-form">
-        <button type="button" className="btn" onClick={onCancel} autoFocus>
+        <button type="button" className="btn" onClick={onCancel} disabled={busy} autoFocus>
           Cancelar
         </button>
         <button type="button" className="btn danger" onClick={onConfirm} disabled={busy}>
-          Excluir aba
+          Arquivar aba
         </button>
       </div>
     </dialog>
@@ -307,6 +307,10 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [sheetToArchive, setSheetToArchive] = useState<Sheet | null>(null);
   const [archiving, setArchiving] = useState(false);
+  const activeRef = useRef<string | null>(null);
+  const tabsRef = useRef<HTMLDivElement>(null);
+  const pendingTabFocus = useRef(false);
+  activeRef.current = activeSheetId;
 
   const reload = useCallback(async (sheetId: string | null) => {
     setLoading(true);
@@ -335,6 +339,14 @@ export function App() {
     void reload(null);
   }, [reload]);
 
+  useEffect(() => {
+    if (loading || !pendingTabFocus.current) return;
+    pendingTabFocus.current = false;
+    const root = tabsRef.current;
+    const target = root?.querySelector<HTMLElement>(".tab.active") ?? root;
+    target?.focus();
+  }, [loading, activeSheetId, sheets]);
+
   const visible = filterJourneys(bugs, filter);
 
   const handlers = {
@@ -357,19 +369,21 @@ export function App() {
   };
 
   async function onConfirmArchive() {
-    if (!sheetToArchive) return;
+    if (!sheetToArchive || archiving) return;
+    const target = sheetToArchive;
+    const idx = sheets.findIndex((s) => s.id === target.id);
+    const neighborId = (sheets[idx + 1] ?? sheets[idx - 1])?.id ?? null;
     setArchiving(true);
     try {
-      const idx = sheets.findIndex((s) => s.id === sheetToArchive.id);
-      const neighbor = sheets[idx + 1] ?? sheets[idx - 1] ?? null;
-      const nextId =
-        sheetToArchive.id === activeSheetId ? (neighbor?.id ?? null) : activeSheetId;
-      await archiveSheet(sheetToArchive.id);
+      await archiveSheet(target.id);
+      const current = activeRef.current;
+      pendingTabFocus.current = true;
       setSheetToArchive(null);
-      await reload(nextId);
-    } catch (e) {
+      await reload(current === target.id ? neighborId : current);
+    } catch {
       setSheetToArchive(null);
-      setError(e instanceof Error ? e.message : "Erro ao excluir aba");
+      await reload(activeRef.current);
+      setError("Não foi possível arquivar a aba. Tente de novo.");
     } finally {
       setArchiving(false);
     }
@@ -400,7 +414,7 @@ export function App() {
       </header>
       <main>
         {error && <p role="alert">{error}</p>}
-        <div className="tabs">
+        <div className="tabs" ref={tabsRef} tabIndex={-1}>
           {sheets.map((s) => (
             <div key={s.id} className={`tab-group${s.id === activeSheetId ? " active" : ""}`}>
               <button
@@ -413,8 +427,8 @@ export function App() {
               <button
                 type="button"
                 className="tab-close"
-                aria-label={`Excluir aba ${s.name}`}
-                title="Excluir aba"
+                aria-label={`Arquivar aba ${s.name}`}
+                title="Arquivar aba"
                 onClick={() => setSheetToArchive(s)}
               >
                 <X size={14} strokeWidth={2.5} aria-hidden />
