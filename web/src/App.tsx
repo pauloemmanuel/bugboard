@@ -9,6 +9,7 @@ import {
   passBug,
   patchBug,
 } from "./api";
+import { PlatformIcon } from "./PlatformIcon";
 
 type Filter = "todos" | BugStatus;
 
@@ -26,6 +27,208 @@ const STATUS_LABEL: Record<BugStatus, string> = {
   ok: "Ok",
   falhou: "Falhou",
 };
+
+function childProgressText(bug: Bug): string | null {
+  const kids = bug.children?.filter((c) => c.kind === "usecase") ?? [];
+  if (kids.length === 0) return null;
+  const ok = kids.filter((c) => c.status === "ok").length;
+  return `${ok}/${kids.length} ok`;
+}
+
+function filterJourneys(journeys: Bug[], filter: Filter): Bug[] {
+  if (filter === "todos") return journeys;
+  return journeys
+    .map((j) => {
+      const matchingKids = (j.children ?? []).filter((c) => c.status === filter);
+      const journeyMatches = j.status === filter;
+      if (!journeyMatches && matchingKids.length === 0) return null;
+      return { ...j, children: matchingKids };
+    })
+    .filter((j): j is Bug => j !== null);
+}
+
+function CardActions({
+  bug,
+  onReady,
+  onReopen,
+  onPass,
+  onFail,
+}: {
+  bug: Bug;
+  onReady: () => void;
+  onReopen: () => void;
+  onPass: () => void;
+  onFail: () => void;
+}) {
+  return (
+    <div className="actions">
+      {bug.status === "testar" && (
+        <>
+          <button type="button" className="btn primary" onClick={onPass}>
+            Passou
+          </button>
+          <button type="button" className="btn danger" onClick={onFail}>
+            Falhou
+          </button>
+        </>
+      )}
+      {bug.status === "fazendo" && (
+        <button type="button" className="btn primary" onClick={onReady}>
+          Pronto pra testar
+        </button>
+      )}
+      {bug.status === "falhou" && (
+        <button type="button" className="btn" onClick={onReopen}>
+          Reabrir
+        </button>
+      )}
+    </div>
+  );
+}
+
+function BugCardBody({ bug }: { bug: Bug }) {
+  return (
+    <>
+      {bug.repos.length > 0 && (
+        <div className="card-section">
+          <div className="section-label">Repos</div>
+          <ul className="repo-chips" aria-label="Repositórios">
+            {bug.repos.map((repo) => (
+              <li key={repo} className="repo-chip">
+                {repo}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {bug.kind === "usecase" && (
+        <div className="card-section">
+          <div className="section-label">Preparação</div>
+          {bug.prep.length > 0 ? (
+            <ul className="prep-list">
+              {bug.prep.map((line, i) => (
+                <li key={i}>{line}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="section-body muted-hint">Agente preenche a massa aqui</p>
+          )}
+        </div>
+      )}
+      {bug.where && (
+        <div className="card-section">
+          <div className="section-label">Onde</div>
+          <p className="section-body">{bug.where}</p>
+        </div>
+      )}
+      {bug.steps.length > 0 && (
+        <div className="card-section">
+          <div className="section-label">Passos</div>
+          <ol className="steps">
+            {bug.steps.map((step, i) => (
+              <li key={i}>{step}</li>
+            ))}
+          </ol>
+        </div>
+      )}
+      {bug.fix && (
+        <div className="card-section">
+          <div className="section-label">Correção</div>
+          <p className="section-body">{bug.fix}</p>
+        </div>
+      )}
+      {bug.note && (
+        <div className="card-section">
+          <div className="section-label">Nota</div>
+          <p className="section-body">{bug.note}</p>
+        </div>
+      )}
+    </>
+  );
+}
+
+function UseCaseCard({
+  bug,
+  handlers,
+}: {
+  bug: Bug;
+  handlers: {
+    onReady: (b: Bug) => void;
+    onReopen: (b: Bug) => void;
+    onPass: (b: Bug) => void;
+    onFail: (b: Bug) => void;
+  };
+}) {
+  return (
+    <article className="card card-child">
+      <div className="card-head">
+        <div className="card-title">
+          <span className="uc-n">#{bug.n}</span> {bug.title}
+          {bug.round > 1 ? ` (rodada ${bug.round})` : ""}
+        </div>
+        <span className={`badge ${bug.status}`}>{STATUS_LABEL[bug.status]}</span>
+      </div>
+      <BugCardBody bug={bug} />
+      <CardActions
+        bug={bug}
+        onReady={() => handlers.onReady(bug)}
+        onReopen={() => handlers.onReopen(bug)}
+        onPass={() => handlers.onPass(bug)}
+        onFail={() => handlers.onFail(bug)}
+      />
+    </article>
+  );
+}
+
+function JourneyCard({
+  bug,
+  handlers,
+}: {
+  bug: Bug;
+  handlers: {
+    onReady: (b: Bug) => void;
+    onReopen: (b: Bug) => void;
+    onPass: (b: Bug) => void;
+    onFail: (b: Bug) => void;
+  };
+}) {
+  const progress = childProgressText(bug);
+  const platform = bug.platform;
+  const children = bug.children ?? [];
+
+  return (
+    <article className="card card-journey">
+      <div className="card-head">
+        <div className="card-title journey-title">
+          <PlatformIcon platform={platform} />
+          <span>
+            #{bug.n} {bug.title}
+            {bug.round > 1 ? ` (rodada ${bug.round})` : ""}
+          </span>
+        </div>
+        <div className="head-badges">
+          {progress && <span className="progress-chip">{progress}</span>}
+          <span className={`badge ${bug.status}`}>{STATUS_LABEL[bug.status]}</span>
+        </div>
+      </div>
+      <BugCardBody bug={bug} />
+      <CardActions
+        bug={bug}
+        onReady={() => handlers.onReady(bug)}
+        onReopen={() => handlers.onReopen(bug)}
+        onPass={() => handlers.onPass(bug)}
+        onFail={() => handlers.onFail(bug)}
+      />
+      {children.length > 0 && (
+        <div className="child-stack">
+          {children.map((child) => (
+            <UseCaseCard key={child.id} bug={child} handlers={handlers} />
+          ))}
+        </div>
+      )}
+    </article>
+  );
+}
 
 export function App() {
   const [sheets, setSheets] = useState<Sheet[]>([]);
@@ -65,7 +268,26 @@ export function App() {
     void reload(null);
   }, [reload]);
 
-  const visible = bugs.filter((b) => (filter === "todos" ? true : b.status === filter));
+  const visible = filterJourneys(bugs, filter);
+
+  const handlers = {
+    onReady: async (bug: Bug) => {
+      await patchBug(bug.id, { status: "testar" });
+      await reload(activeSheetId);
+    },
+    onReopen: async (bug: Bug) => {
+      await patchBug(bug.id, { status: "fazendo" });
+      await reload(activeSheetId);
+    },
+    onPass: async (bug: Bug) => {
+      await passBug(bug.id);
+      await reload(activeSheetId);
+    },
+    onFail: async (bug: Bug) => {
+      await failBug(bug.id);
+      await reload(activeSheetId);
+    },
+  };
 
   async function onCreateSheet() {
     const name = newSheetName.trim();
@@ -74,26 +296,6 @@ export function App() {
     setNewSheetName("");
     setShowNewSheet(false);
     await reload(sheet.id);
-  }
-
-  async function onReadyToTest(bug: Bug) {
-    await patchBug(bug.id, { status: "testar" });
-    await reload(activeSheetId);
-  }
-
-  async function onReopen(bug: Bug) {
-    await patchBug(bug.id, { status: "fazendo" });
-    await reload(activeSheetId);
-  }
-
-  async function onPass(bug: Bug) {
-    await passBug(bug.id);
-    await reload(activeSheetId);
-  }
-
-  async function onFail(bug: Bug) {
-    await failBug(bug.id);
-    await reload(activeSheetId);
   }
 
   return (
@@ -165,79 +367,13 @@ export function App() {
           <div className="empty">Nenhum card ainda. Os agentes criam via MCP.</div>
         ) : (
           <div className="cards">
-            {visible.map((bug) => (
-              <article key={bug.id} className="card">
-                <div className="card-head">
-                  <div className="card-title">
-                    #{bug.n} {bug.title}
-                    {bug.round > 1 ? ` (rodada ${bug.round})` : ""}
-                  </div>
-                  <span className={`badge ${bug.status}`}>{STATUS_LABEL[bug.status]}</span>
-                </div>
-                {bug.repos.length > 0 && (
-                  <div className="card-section">
-                    <div className="section-label">Repos</div>
-                    <ul className="repo-chips" aria-label="Repositórios">
-                      {bug.repos.map((repo) => (
-                        <li key={repo} className="repo-chip">
-                          {repo}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {bug.where && (
-                  <div className="card-section">
-                    <div className="section-label">Onde</div>
-                    <p className="section-body">{bug.where}</p>
-                  </div>
-                )}
-                {bug.steps.length > 0 && (
-                  <div className="card-section">
-                    <div className="section-label">Passos</div>
-                    <ol className="steps">
-                      {bug.steps.map((step, i) => (
-                        <li key={i}>{step}</li>
-                      ))}
-                    </ol>
-                  </div>
-                )}
-                {bug.fix && (
-                  <div className="card-section">
-                    <div className="section-label">Correção</div>
-                    <p className="section-body">{bug.fix}</p>
-                  </div>
-                )}
-                {bug.note && (
-                  <div className="card-section">
-                    <div className="section-label">Nota</div>
-                    <p className="section-body">{bug.note}</p>
-                  </div>
-                )}
-                <div className="actions">
-                  {bug.status === "testar" && (
-                    <>
-                      <button type="button" className="btn primary" onClick={() => void onPass(bug)}>
-                        Passou
-                      </button>
-                      <button type="button" className="btn danger" onClick={() => void onFail(bug)}>
-                        Falhou
-                      </button>
-                    </>
-                  )}
-                  {bug.status === "fazendo" && (
-                    <button type="button" className="btn primary" onClick={() => void onReadyToTest(bug)}>
-                      Pronto pra testar
-                    </button>
-                  )}
-                  {bug.status === "falhou" && (
-                    <button type="button" className="btn" onClick={() => void onReopen(bug)}>
-                      Reabrir
-                    </button>
-                  )}
-                </div>
-              </article>
-            ))}
+            {visible.map((bug) =>
+              bug.kind === "journey" || (bug.children && bug.children.length > 0) ? (
+                <JourneyCard key={bug.id} bug={bug} handlers={handlers} />
+              ) : (
+                <UseCaseCard key={bug.id} bug={bug} handlers={handlers} />
+              ),
+            )}
           </div>
         )}
       </main>

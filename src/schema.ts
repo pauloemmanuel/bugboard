@@ -19,6 +19,10 @@ CREATE TABLE IF NOT EXISTS bugs (
   fix TEXT NOT NULL DEFAULT '',
   round INTEGER NOT NULL DEFAULT 1,
   note TEXT NOT NULL DEFAULT '',
+  parent_id TEXT NULL REFERENCES bugs(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL DEFAULT 'journey',
+  platform TEXT NULL,
+  prep TEXT NOT NULL DEFAULT '[]',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   UNIQUE(sheet_id, n)

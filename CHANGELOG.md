@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-11
+
+### Added
+
+- Journey vs use case hierarchy: `parent_id`, `kind`, `platform`, `prep` on cards
+- SQLite migration for existing `~/.bugboard` databases (schema user_version 2)
+- Nested `bug_list` / `GET /api/sheets/:id/bugs` with `children[]`
+- Platform icons (iOS, Android, Web, iPad) on journey cards
+- UI: child use case stack, **Preparação** section, journey child progress (`3/7 ok`)
+- MCP `bug_create` / `bug_update` accept `parent_id`, `kind`, `platform`, `prep`
+
+### Changed
+
+- Breaking-ish card model: prefer journeys (roots) with atomic use case children; pass/fail is per card (parent pass does not auto-pass children)
+
+Local QA sheets and cards (e.g. product smoke scenarios) stay in `~/.bugboard/` only and are not part of the release artifact.
+
 ## [0.1.2] - 2026-11-11
 
 ### Changed
@@ -16,8 +33,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Web UI: numbered step list and clearer card sections (repos as chips, section labels)
-
-Local QA sheets and cards (e.g. product smoke scenarios) stay in `~/.bugboard/` only and are not part of the release artifact.
 
 ## [0.1.1] - 2026-11-11
 

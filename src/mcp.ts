@@ -11,7 +11,7 @@ import {
   failBug,
   getBug,
   getDb,
-  listBugs,
+  listBugsNested,
   listSheets,
   passBug,
   updateBug,
@@ -29,7 +29,7 @@ export async function runMcpServer(): Promise<void> {
   getDb();
 
   const server = new Server(
-    { name: "bugboard", version: "0.1.0" },
+    { name: "bugboard", version: "0.2.0" },
     { capabilities: { tools: {} } },
   );
 
@@ -86,7 +86,7 @@ export async function runMcpServer(): Promise<void> {
       },
       {
         name: "bug_list",
-        description: "List bugs on a sheet",
+        description: "List bugs on a sheet (nested: journeys with children[])",
         inputSchema: {
           type: "object",
           properties: {
@@ -122,6 +122,10 @@ export async function runMcpServer(): Promise<void> {
             fix: { type: "string" },
             round: { type: "number" },
             note: { type: "string" },
+            parent_id: { type: "string" },
+            kind: { type: "string", enum: ["journey", "usecase"] },
+            platform: { type: "string", enum: ["ios", "android", "web", "ipad"] },
+            prep: { type: "array", items: { type: "string" } },
           },
           required: ["sheet_id", "title"],
           additionalProperties: false,
@@ -143,6 +147,8 @@ export async function runMcpServer(): Promise<void> {
             fix: { type: "string" },
             round: { type: "number" },
             note: { type: "string" },
+            platform: { type: "string", enum: ["ios", "android", "web", "ipad"] },
+            prep: { type: "array", items: { type: "string" } },
           },
           required: ["id"],
           additionalProperties: false,
@@ -212,7 +218,7 @@ export async function runMcpServer(): Promise<void> {
       }
       case "bug_list": {
         const status = a.status as BugStatus | undefined;
-        return textContent({ bugs: listBugs(String(a.sheet_id), status) });
+        return textContent({ bugs: listBugsNested(String(a.sheet_id), status) });
       }
       case "bug_get": {
         const bug = getBug(String(a.id));
@@ -229,6 +235,10 @@ export async function runMcpServer(): Promise<void> {
           fix: a.fix as string | undefined,
           round: a.round as number | undefined,
           note: a.note as string | undefined,
+          parent_id: a.parent_id as string | undefined,
+          kind: a.kind as "journey" | "usecase" | undefined,
+          platform: a.platform as "ios" | "android" | "web" | "ipad" | undefined,
+          prep: a.prep as string[] | undefined,
         });
         if (!bug) return { content: [{ type: "text", text: "sheet not found" }], isError: true };
         return textContent({ bug });
@@ -243,6 +253,8 @@ export async function runMcpServer(): Promise<void> {
           fix: a.fix as string | undefined,
           round: a.round as number | undefined,
           note: a.note as string | undefined,
+          platform: a.platform as "ios" | "android" | "web" | "ipad" | undefined,
+          prep: a.prep as string[] | undefined,
         });
         if (!bug) return { content: [{ type: "text", text: "not found" }], isError: true };
         return textContent({ bug });

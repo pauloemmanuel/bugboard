@@ -1,4 +1,6 @@
 export type BugStatus = "fazendo" | "testar" | "ok" | "falhou";
+export type BugKind = "journey" | "usecase";
+export type Platform = "ios" | "android" | "web" | "ipad";
 
 export interface Sheet {
   id: string;
@@ -18,6 +20,11 @@ export interface Bug {
   fix: string;
   round: number;
   note: string;
+  parent_id: string | null;
+  kind: BugKind;
+  platform: Platform | null;
+  prep: string[];
+  children?: Bug[];
 }
 
 export interface Stats {

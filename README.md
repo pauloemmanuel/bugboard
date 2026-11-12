@@ -43,11 +43,25 @@ All board data lives in **`~/.bugboard/`** (SQLite). Cloning this repo does **no
 
 Archived sheets are hidden from the default list (MCP: `sheet_archive`).
 
+## Journeys and use cases
+
+**Journey** cards (`kind: journey`, `parent_id` null) group a device or platform run (e.g. iOS Wellmexh 80/20). **Use case** cards (`kind: usecase`, `parent_id` set) are atomic flows inside that journey (signup, chat, wallet). Each use case has its own status, steps, and pass/fail; one failure does not block the whole journey. Journey cards show child progress (`3/7 ok`) from use case statuses; marking a journey **Passou** does not auto-pass children.
+
+`prep` is a string array of test data the agent should fill (emails, MFA codes, package names, URLs). The UI shows **Preparação** on use cases.
+
+`platform` on journeys: `ios` | `android` | `web` | `ipad` (icons in the UI). Children may inherit display from the parent.
+
+`bug_list` and `GET /api/sheets/:id/bugs` return **nested** journeys with `children[]`.
+
 ## Card schema
 
 | Field | Type | Notes |
 | --- | --- | --- |
 | `title` | string | Required |
+| `kind` | enum | `journey` (root) or `usecase` (child) |
+| `parent_id` | string? | Parent journey id for use cases |
+| `platform` | enum? | `ios`, `android`, `web`, `ipad` |
+| `prep` | string[] | Test data / massa for agents to fill |
 | `repos` | string[] | Repo names or paths (display only) |
 | `status` | enum | See below |
 | `where` | string | Environment or surface to test |

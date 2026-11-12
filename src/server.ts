@@ -9,7 +9,7 @@ import {
   failBug,
   getBug,
   getDb,
-  listBugs,
+  listBugsNested,
   listSheets,
   passBug,
   updateBug,
@@ -52,7 +52,7 @@ export function createApp(): Hono {
   app.get("/api/sheets/:id/bugs", (c) => {
     const id = c.req.param("id");
     const status = c.req.query("status") as BugStatus | undefined;
-    return c.json({ bugs: listBugs(id, status) });
+    return c.json({ bugs: listBugsNested(id, status) });
   });
 
   app.post("/api/sheets/:id/bugs", async (c) => {
@@ -66,11 +66,18 @@ export function createApp(): Hono {
       fix?: string;
       round?: number;
       note?: string;
+      parent_id?: string | null;
+      kind?: "journey" | "usecase";
+      platform?: "ios" | "android" | "web" | "ipad" | null;
+      prep?: string[];
     };
     if (!body.title?.trim()) {
       return c.json({ error: "title required" }, 400);
     }
-    const bug = createBug(sheetId, body as { title: string });
+    const bug = createBug(sheetId, {
+      ...body,
+      title: body.title!,
+    });
     if (!bug) return c.json({ error: "sheet not found" }, 404);
     return c.json({ bug }, 201);
   });
