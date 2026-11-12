@@ -21,6 +21,10 @@ import type { BugStatus } from "./types.js";
 export function createApp(): Hono {
   const app = new Hono();
   app.use("*", cors());
+  app.use("/api/*", async (c, next) => {
+    await next();
+    c.header("Cache-Control", "no-store");
+  });
 
   app.get("/health", (c) => {
     getDb();

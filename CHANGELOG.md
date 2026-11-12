@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-11-12
+
+### Added
+
+- Web UI: prep lines `Ambiente` / `E-mail` / `Senha` / `Password` render with bold values and separate copy buttons; other prep lines get a compact copy control
+- Clipboard feedback: brief "Copiado" state on copy actions
+
+### Changed
+
+- Long fix/where/note text uses a de-emphasized scrollable block so prep stays scannable
+- API responses and browser fetches use `no-store` so the 2.5s poll refreshes nested use case cards without F5
+
 ## [0.3.3] - 2026-11-12
 
 ### Added

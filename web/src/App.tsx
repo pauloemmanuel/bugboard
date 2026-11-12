@@ -12,6 +12,8 @@ import {
   patchBug,
 } from "./api";
 import { PlatformIcon } from "./PlatformIcon";
+import { PrepList } from "./PrepList";
+import { SectionText } from "./SectionText";
 
 type Filter = "todos" | BugStatus;
 
@@ -152,11 +154,7 @@ function BugCardBody({ bug }: { bug: Bug }) {
         <div className="card-section">
           <div className="section-label">Preparação</div>
           {bug.prep.length > 0 ? (
-            <ul className="prep-list">
-              {bug.prep.map((line, i) => (
-                <li key={i}>{line}</li>
-              ))}
-            </ul>
+            <PrepList lines={bug.prep} />
           ) : (
             <p className="section-body muted-hint">Sem preparação neste card.</p>
           )}
@@ -165,7 +163,7 @@ function BugCardBody({ bug }: { bug: Bug }) {
       {bug.where && (
         <div className="card-section">
           <div className="section-label">Onde</div>
-          <p className="section-body">{bug.where}</p>
+          <SectionText text={bug.where} />
         </div>
       )}
       {bug.steps.length > 0 && (
@@ -181,13 +179,13 @@ function BugCardBody({ bug }: { bug: Bug }) {
       {bug.fix && (
         <div className="card-section">
           <div className="section-label">Correção</div>
-          <p className="section-body">{bug.fix}</p>
+          <SectionText text={bug.fix} />
         </div>
       )}
       {bug.note && (
         <div className="card-section">
           <div className="section-label">Nota</div>
-          <p className="section-body">{bug.note}</p>
+          <SectionText text={bug.note} />
         </div>
       )}
     </>
@@ -269,7 +267,11 @@ function JourneyCard({
       {children.length > 0 && (
         <div className="child-stack">
           {children.map((child) => (
-            <UseCaseCard key={child.id} bug={child} handlers={handlers} />
+            <UseCaseCard
+              key={`${child.id}:${child.updated_at ?? ""}`}
+              bug={child}
+              handlers={handlers}
+            />
           ))}
         </div>
       )}
@@ -410,7 +412,7 @@ export function App() {
   }, []);
 
   const pollBoard = useCallback(async () => {
-    if (pollInFlight.current || document.hidden) return;
+    if (pollInFlight.current || document.hidden || bugsSnapshot.current) return;
     pollInFlight.current = true;
     const sidAtStart = activeRef.current;
     markScrollPreserve();
@@ -662,13 +664,14 @@ export function App() {
           <div className="empty">Nenhum card ainda. Os agentes criam via MCP.</div>
         ) : (
           <div className="cards">
-            {visible.map((bug) =>
-              bug.kind === "journey" || (bug.children && bug.children.length > 0) ? (
-                <JourneyCard key={bug.id} bug={bug} handlers={handlers} />
+            {visible.map((bug) => {
+              const cardKey = `${bug.id}:${bug.updated_at ?? ""}`;
+              return bug.kind === "journey" || (bug.children && bug.children.length > 0) ? (
+                <JourneyCard key={cardKey} bug={bug} handlers={handlers} />
               ) : (
-                <UseCaseCard key={bug.id} bug={bug} handlers={handlers} />
-              ),
-            )}
+                <UseCaseCard key={cardKey} bug={bug} handlers={handlers} />
+              );
+            })}
           </div>
         )}
       </main>
