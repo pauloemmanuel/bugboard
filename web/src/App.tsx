@@ -15,6 +15,8 @@ import { PlatformIcon } from "./PlatformIcon";
 
 type Filter = "todos" | BugStatus;
 
+const POLL_INTERVAL_MS = 2500;
+
 const FILTER_LABELS: Record<Filter, string> = {
   todos: "Todos",
   fazendo: "Fazendo",
@@ -338,6 +340,7 @@ export function App() {
   const pendingTabFocus = useRef(false);
   const scrollSnapshot = useRef<number | null>(null);
   const bugsSnapshot = useRef<Bug[] | null>(null);
+  const pollInFlight = useRef(false);
   activeRef.current = activeSheetId;
 
   const markScrollPreserve = useCallback(() => {
@@ -406,9 +409,74 @@ export function App() {
     }
   }, []);
 
+  const pollBoard = useCallback(async () => {
+    if (pollInFlight.current || document.hidden) return;
+    pollInFlight.current = true;
+    const sidAtStart = activeRef.current;
+    markScrollPreserve();
+    try {
+      const s = await fetchSheets();
+      setSheets(s);
+      let sheetId = sidAtStart;
+      if (sheetId && !s.some((x) => x.id === sheetId)) {
+        sheetId = s[0]?.id ?? null;
+        if (sheetId !== null) setActiveSheetId(sheetId);
+        activeRef.current = sheetId;
+      }
+      if (!sheetId) {
+        if (activeRef.current === sidAtStart) {
+          setBugs([]);
+          setStats(await fetchStats());
+        }
+        return;
+      }
+      if (activeRef.current !== sidAtStart && activeRef.current !== sheetId) return;
+      const targetId = activeRef.current ?? sheetId;
+      const [b, st] = await Promise.all([fetchBugs(targetId), fetchStats(targetId)]);
+      if (activeRef.current !== targetId) return;
+      setBugs(b);
+      setStats(st);
+    } catch {
+      /* keep prior data on background poll */
+    } finally {
+      pollInFlight.current = false;
+    }
+  }, [markScrollPreserve]);
+
   useEffect(() => {
     void loadSheetData(null, { refreshSheets: true, initial: true });
   }, [loadSheetData]);
+
+  useEffect(() => {
+    if (initialLoading) return;
+
+    let timer: ReturnType<typeof setInterval> | null = null;
+
+    const stop = () => {
+      if (timer !== null) {
+        clearInterval(timer);
+        timer = null;
+      }
+    };
+
+    const start = () => {
+      if (document.hidden) return;
+      void pollBoard();
+      timer = setInterval(() => void pollBoard(), POLL_INTERVAL_MS);
+    };
+
+    const onVisibility = () => {
+      if (document.hidden) stop();
+      else start();
+    };
+
+    start();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [initialLoading, pollBoard]);
 
   useEffect(() => {
     if (initialLoading || !pendingTabFocus.current) return;

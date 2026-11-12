@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-11-12
+
+### Added
+
+- Web UI: soft poll every 2.5s while the tab is visible so MCP and API changes show without F5
+- Polling pauses when the tab is hidden; refresh keeps the active sheet, scroll, and no loading spinner
+
 ## [0.3.2] - 2026-11-12
 
 ### Changed
