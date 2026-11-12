@@ -1,0 +1,197 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: #f4f4f4;
+  color: #111;
+}
+
+header.board-header {
+  background: #111;
+  color: #fff;
+  padding: 16px 20px;
+}
+
+header.board-header h1 {
+  margin: 0 0 8px;
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 0.9rem;
+}
+
+.stats span {
+  background: #222;
+  padding: 4px 10px;
+  border: 1px solid #444;
+}
+
+main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 16px 20px 40px;
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+  align-items: center;
+}
+
+.tab {
+  border: 2px solid #111;
+  background: #fff;
+  color: #111;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.tab.active {
+  background: #111;
+  color: #fff;
+}
+
+.tab-new {
+  border: 2px dashed #111;
+  background: #fff;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.filter {
+  border: 2px solid #111;
+  background: #fff;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.filter.active {
+  background: #111;
+  color: #fff;
+}
+
+.cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.card {
+  border: 2px solid #111;
+  background: #fff;
+  padding: 14px 16px;
+}
+
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.card-title {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  border: 2px solid #111;
+}
+
+.badge.fazendo {
+  background: #fff3cd;
+}
+
+.badge.testar {
+  background: #cfe2ff;
+}
+
+.badge.ok {
+  background: #d1e7dd;
+}
+
+.badge.falhou {
+  background: #f8d7da;
+}
+
+.meta {
+  margin-top: 8px;
+  font-size: 0.9rem;
+  color: #222;
+}
+
+.meta strong {
+  color: #000;
+}
+
+.actions {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.btn {
+  border: 2px solid #111;
+  background: #fff;
+  color: #111;
+  padding: 8px 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn.primary {
+  background: #111;
+  color: #fff;
+}
+
+.btn.danger {
+  background: #b00020;
+  border-color: #b00020;
+  color: #fff;
+}
+
+.empty {
+  border: 2px dashed #111;
+  padding: 24px;
+  text-align: center;
+  font-weight: 600;
+  background: #fff;
+}
+
+.inline-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+input[type="text"] {
+  border: 2px solid #111;
+  padding: 8px 10px;
+  font-size: 1rem;
+  min-width: 160px;
+}

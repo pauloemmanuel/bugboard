@@ -1,0 +1,43 @@
+{
+  "name": "bugboard",
+  "version": "0.1.0",
+  "description": "Local bug board with MCP for AI agents and a shared browser UI",
+  "license": "MIT",
+  "author": "Paulo Emmanuel",
+  "type": "module",
+  "bin": {
+    "bugboard": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "web/dist"
+  ],
+  "scripts": {
+    "build": "tsc && npm run build:web",
+    "build:web": "vite build --config web/vite.config.ts",
+    "dev:web": "vite --config web/vite.config.ts",
+    "dev:server": "tsx src/index.ts serve",
+    "prepack": "npm run build"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.14.3",
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "better-sqlite3": "^13.1.1",
+    "hono": "^4.7.10"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^22.15.18",
+    "@types/react": "^19.1.4",
+    "@types/react-dom": "^19.1.5",
+    "@vitejs/plugin-react": "^4.4.1",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5"
+  }
+}

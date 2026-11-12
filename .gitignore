@@ -1,0 +1,10 @@
+node_modules/
+dist/
+web/dist/
+.env
+*.sqlite
+.DS_Store
+
+data/
+seed/
+*.seed.json
