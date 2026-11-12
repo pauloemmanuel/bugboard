@@ -36,22 +36,46 @@ function inferPlatform(title: string, where: string): Platform | null {
   return null;
 }
 
+function bugsTableExists(db: Database.Database): boolean {
+  const row = db
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'bugs'")
+    .get() as { name: string } | undefined;
+  return row !== undefined;
+}
+
 function migrateBugsTable(db: Database.Database): void {
+  if (!bugsTableExists(db)) return;
+
   const cols = db.prepare("PRAGMA table_info(bugs)").all() as { name: string }[];
   const names = new Set(cols.map((c) => c.name));
+  let schemaChanged = false;
+
   if (!names.has("parent_id")) {
-    db.exec("ALTER TABLE bugs ADD COLUMN parent_id TEXT NULL REFERENCES bugs(id) ON DELETE CASCADE");
+    db.exec(
+      "ALTER TABLE bugs ADD COLUMN parent_id TEXT NULL REFERENCES bugs(id) ON DELETE CASCADE",
+    );
+    schemaChanged = true;
   }
   if (!names.has("kind")) {
     db.exec("ALTER TABLE bugs ADD COLUMN kind TEXT NOT NULL DEFAULT 'journey'");
+    schemaChanged = true;
   }
   if (!names.has("platform")) {
     db.exec("ALTER TABLE bugs ADD COLUMN platform TEXT NULL");
+    schemaChanged = true;
   }
   if (!names.has("prep")) {
     db.exec("ALTER TABLE bugs ADD COLUMN prep TEXT NOT NULL DEFAULT '[]'");
+    schemaChanged = true;
   }
-  db.exec("CREATE INDEX IF NOT EXISTS idx_bugs_parent ON bugs(parent_id)");
+
+  const after = db.prepare("PRAGMA table_info(bugs)").all() as { name: string }[];
+  if (after.some((c) => c.name === "parent_id")) {
+    db.exec("CREATE INDEX IF NOT EXISTS idx_bugs_parent ON bugs(parent_id)");
+  }
+
+  if (!schemaChanged) return;
+
   const rows = db.prepare("SELECT id, title, where_text, parent_id, platform FROM bugs").all() as {
     id: string;
     title: string;
@@ -69,6 +93,7 @@ function migrateBugsTable(db: Database.Database): void {
       if (plat) updPlatform.run(plat, row.id);
     }
   }
+  db.pragma("user_version = 2");
 }
 
 export function rowToBug(row: BugRow): Bug {
@@ -99,11 +124,7 @@ export function getDb(): Database.Database {
   _db = new Database(DB_PATH);
   _db.pragma("journal_mode = WAL");
   _db.exec(SCHEMA_SQL);
-  const schemaVer = _db.pragma("user_version", { simple: true }) as number;
-  if (schemaVer < 2) {
-    migrateBugsTable(_db);
-    _db.pragma("user_version = 2");
-  }
+  migrateBugsTable(_db);
   seedIfEmpty(_db);
   return _db;
 }
