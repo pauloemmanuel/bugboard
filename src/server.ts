@@ -106,7 +106,7 @@ export function createApp(): Hono {
 
   const webRoot = webDistDir();
   app.get("/", serveStatic({ path: `${webRoot}/index.html` }));
-  app.get("/assets/*", serveStatic({ root: `${webRoot}/assets` }));
+  app.get("/assets/*", serveStatic({ root: webRoot }));
   app.get("/index.html", serveStatic({ path: `${webRoot}/index.html` }));
 
   return app;
