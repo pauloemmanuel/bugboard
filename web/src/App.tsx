@@ -1,7 +1,8 @@
 import { Check, CircleDashed, Eye, X } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Bug, BugStatus, Sheet, Stats } from "./api";
 import {
+  archiveSheet,
   createSheet,
   failBug,
   fetchBugs,
@@ -248,6 +249,52 @@ function JourneyCard({
   );
 }
 
+function ArchiveSheetDialog({
+  sheet,
+  busy,
+  onConfirm,
+  onCancel,
+}: {
+  sheet: Sheet | null;
+  busy: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (sheet && !el.open) el.showModal();
+    if (!sheet && el.open) el.close();
+  }, [sheet]);
+
+  return (
+    <dialog
+      ref={ref}
+      className="confirm-dialog"
+      aria-labelledby="archive-sheet-title"
+      onCancel={(e) => {
+        e.preventDefault();
+        onCancel();
+      }}
+    >
+      <h2 id="archive-sheet-title">Excluir aba?</h2>
+      <p>
+        A aba <strong>{sheet?.name}</strong> some do board. Os cards ficam guardados no banco local.
+      </p>
+      <div className="inline-form">
+        <button type="button" className="btn" onClick={onCancel} autoFocus>
+          Cancelar
+        </button>
+        <button type="button" className="btn danger" onClick={onConfirm} disabled={busy}>
+          Excluir aba
+        </button>
+      </div>
+    </dialog>
+  );
+}
+
 export function App() {
   const [sheets, setSheets] = useState<Sheet[]>([]);
   const [activeSheetId, setActiveSheetId] = useState<string | null>(null);
@@ -258,6 +305,8 @@ export function App() {
   const [showNewSheet, setShowNewSheet] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sheetToArchive, setSheetToArchive] = useState<Sheet | null>(null);
+  const [archiving, setArchiving] = useState(false);
 
   const reload = useCallback(async (sheetId: string | null) => {
     setLoading(true);
@@ -307,6 +356,25 @@ export function App() {
     },
   };
 
+  async function onConfirmArchive() {
+    if (!sheetToArchive) return;
+    setArchiving(true);
+    try {
+      const idx = sheets.findIndex((s) => s.id === sheetToArchive.id);
+      const neighbor = sheets[idx + 1] ?? sheets[idx - 1] ?? null;
+      const nextId =
+        sheetToArchive.id === activeSheetId ? (neighbor?.id ?? null) : activeSheetId;
+      await archiveSheet(sheetToArchive.id);
+      setSheetToArchive(null);
+      await reload(nextId);
+    } catch (e) {
+      setSheetToArchive(null);
+      setError(e instanceof Error ? e.message : "Erro ao excluir aba");
+    } finally {
+      setArchiving(false);
+    }
+  }
+
   async function onCreateSheet() {
     const name = newSheetName.trim();
     if (!name) return;
@@ -334,14 +402,24 @@ export function App() {
         {error && <p role="alert">{error}</p>}
         <div className="tabs">
           {sheets.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              className={`tab${s.id === activeSheetId ? " active" : ""}`}
-              onClick={() => void reload(s.id)}
-            >
-              {s.name}
-            </button>
+            <div key={s.id} className={`tab-group${s.id === activeSheetId ? " active" : ""}`}>
+              <button
+                type="button"
+                className={`tab${s.id === activeSheetId ? " active" : ""}`}
+                onClick={() => void reload(s.id)}
+              >
+                {s.name}
+              </button>
+              <button
+                type="button"
+                className="tab-close"
+                aria-label={`Excluir aba ${s.name}`}
+                title="Excluir aba"
+                onClick={() => setSheetToArchive(s)}
+              >
+                <X size={14} strokeWidth={2.5} aria-hidden />
+              </button>
+            </div>
           ))}
           {showNewSheet ? (
             <div className="inline-form">
@@ -395,6 +473,12 @@ export function App() {
           </div>
         )}
       </main>
+      <ArchiveSheetDialog
+        sheet={sheetToArchive}
+        busy={archiving}
+        onConfirm={() => void onConfirmArchive()}
+        onCancel={() => setSheetToArchive(null)}
+      />
     </>
   );
 }

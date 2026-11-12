@@ -56,6 +56,17 @@ export async function createSheet(name: string): Promise<Sheet> {
   return data.sheet;
 }
 
+export async function archiveSheet(id: string): Promise<Sheet> {
+  const data = await json<{ sheet: Sheet }>(
+    await fetch(`/api/sheets/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ archived: 1 }),
+    }),
+  );
+  return data.sheet;
+}
+
 export async function fetchBugs(sheetId: string): Promise<Bug[]> {
   const data = await json<{ bugs: Bug[] }>(await fetch(`/api/sheets/${sheetId}/bugs`));
   return data.bugs;

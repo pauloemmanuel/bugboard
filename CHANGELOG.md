@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-12
+
+### Added
+
+- UI: close button on each sheet tab with a confirm dialog (archives via `PATCH /api/sheets/:id`, same as MCP `sheet_archive`)
+- After archiving the active tab, selection moves to the neighbor sheet
+
 ## [0.2.2] - 2026-11-12
 
 ### Changed

@@ -135,6 +135,48 @@ main {
   border-color: var(--bb-header-bg);
 }
 
+.tab-group {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--bb-border);
+  border-radius: 999px;
+  background: var(--bb-surface);
+  color: var(--bb-text);
+}
+
+.tab-group.active {
+  background: var(--bb-header-bg);
+  color: var(--bb-header-text);
+  border-color: var(--bb-header-bg);
+}
+
+.tab-group .tab,
+.tab-group .tab.active {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 8px 6px 8px 16px;
+}
+
+.tab-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-right: 4px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.tab-close:hover {
+  background: var(--bb-danger);
+  color: var(--bb-danger-text);
+}
+
 .tab-new {
   border: 1px dashed var(--bb-border-strong);
   background: var(--bb-surface);
@@ -387,6 +429,7 @@ ol.steps li:last-child {
 .tab:focus-visible,
 .filter:focus-visible,
 .tab-new:focus-visible,
+.tab-close:focus-visible,
 input[type="text"]:focus-visible {
   outline: 2px solid var(--bb-accent);
   outline-offset: 2px;
@@ -428,4 +471,31 @@ input[type="text"] {
   min-width: 160px;
   background: var(--bb-input-bg);
   color: var(--bb-text-strong);
+}
+
+.confirm-dialog {
+  border: 1px solid var(--bb-border-strong);
+  border-radius: var(--bb-radius);
+  background: var(--bb-surface);
+  color: var(--bb-text-strong);
+  padding: 24px;
+  max-width: 420px;
+}
+
+.confirm-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.confirm-dialog h2 {
+  margin: 0 0 8px;
+  font-size: 1.15rem;
+}
+
+.confirm-dialog p {
+  margin: 0 0 18px;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
