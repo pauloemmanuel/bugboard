@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Web UI: numbered step list and clearer card sections (repos as chips, section labels)
 
+Local QA sheets and cards (e.g. product smoke scenarios) stay in `~/.bugboard/` only and are not part of the release artifact.
+
 ## [0.1.1] - 2026-11-11
 
 ### Fixed
