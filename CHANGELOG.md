@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-11-12
+
+### Changed
+
+- Cards, tabs, filters, and buttons use 12 to 16px radius and pill controls
+- Nested use cases sit on a soft left accent instead of a hard square frame
+- Light and dark colors stay on CSS variables, with solid high-contrast text
+- Empty preparação copy no longer asks an agent to fill the mass
+
 ## [0.2.1] - 2026-11-11
 
 ### Changed

@@ -129,7 +129,7 @@ function BugCardBody({ bug }: { bug: Bug }) {
               ))}
             </ul>
           ) : (
-            <p className="section-body muted-hint">Agente preenche a massa aqui</p>
+            <p className="section-body muted-hint">Sem preparação neste card.</p>
           )}
         </div>
       )}
