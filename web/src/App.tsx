@@ -175,29 +175,44 @@ export function App() {
                   <span className={`badge ${bug.status}`}>{STATUS_LABEL[bug.status]}</span>
                 </div>
                 {bug.repos.length > 0 && (
-                  <p className="meta">
-                    <strong>Repos:</strong> {bug.repos.join(", ")}
-                  </p>
+                  <div className="card-section">
+                    <div className="section-label">Repos</div>
+                    <ul className="repo-chips" aria-label="Repositórios">
+                      {bug.repos.map((repo) => (
+                        <li key={repo} className="repo-chip">
+                          {repo}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 )}
                 {bug.where && (
-                  <p className="meta">
-                    <strong>Onde:</strong> {bug.where}
-                  </p>
+                  <div className="card-section">
+                    <div className="section-label">Onde</div>
+                    <p className="section-body">{bug.where}</p>
+                  </div>
                 )}
                 {bug.steps.length > 0 && (
-                  <p className="meta">
-                    <strong>Passos:</strong> {bug.steps.join(" | ")}
-                  </p>
+                  <div className="card-section">
+                    <div className="section-label">Passos</div>
+                    <ol className="steps">
+                      {bug.steps.map((step, i) => (
+                        <li key={i}>{step}</li>
+                      ))}
+                    </ol>
+                  </div>
                 )}
                 {bug.fix && (
-                  <p className="meta">
-                    <strong>Correção:</strong> {bug.fix}
-                  </p>
+                  <div className="card-section">
+                    <div className="section-label">Correção</div>
+                    <p className="section-body">{bug.fix}</p>
+                  </div>
                 )}
                 {bug.note && (
-                  <p className="meta">
-                    <strong>Nota:</strong> {bug.note}
-                  </p>
+                  <div className="card-section">
+                    <div className="section-label">Nota</div>
+                    <p className="section-body">{bug.note}</p>
+                  </div>
                 )}
                 <div className="actions">
                   {bug.status === "testar" && (

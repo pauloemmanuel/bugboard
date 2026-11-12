@@ -1,3 +1,29 @@
+:root {
+  --bb-bg: #f4f4f4;
+  --bb-surface: #fff;
+  --bb-text: #111;
+  --bb-text-strong: #000;
+  --bb-muted: #222;
+  --bb-header-bg: #111;
+  --bb-header-text: #fff;
+  --bb-border: #111;
+  --bb-chip-bg: #fafafa;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bb-bg: #121212;
+    --bb-surface: #1e1e1e;
+    --bb-text: #e8e8e8;
+    --bb-text-strong: #fff;
+    --bb-muted: #c8c8c8;
+    --bb-header-bg: #0a0a0a;
+    --bb-header-text: #f4f4f4;
+    --bb-border: #888;
+    --bb-chip-bg: #2a2a2a;
+  }
+}
+
 * {
   box-sizing: border-box;
 }
@@ -5,13 +31,13 @@
 body {
   margin: 0;
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-  background: #f4f4f4;
-  color: #111;
+  background: var(--bb-bg);
+  color: var(--bb-text);
 }
 
 header.board-header {
-  background: #111;
-  color: #fff;
+  background: var(--bb-header-bg);
+  color: var(--bb-header-text);
   padding: 16px 20px;
 }
 
@@ -49,22 +75,23 @@ main {
 }
 
 .tab {
-  border: 2px solid #111;
-  background: #fff;
-  color: #111;
+  border: 2px solid var(--bb-border);
+  background: var(--bb-surface);
+  color: var(--bb-text);
   padding: 8px 14px;
   cursor: pointer;
   font-weight: 600;
 }
 
 .tab.active {
-  background: #111;
-  color: #fff;
+  background: var(--bb-header-bg);
+  color: var(--bb-header-text);
+  border-color: var(--bb-border);
 }
 
 .tab-new {
-  border: 2px dashed #111;
-  background: #fff;
+  border: 2px dashed var(--bb-border);
+  background: var(--bb-surface);
   padding: 8px 12px;
   cursor: pointer;
   font-weight: 600;
@@ -78,16 +105,16 @@ main {
 }
 
 .filter {
-  border: 2px solid #111;
-  background: #fff;
+  border: 2px solid var(--bb-border);
+  background: var(--bb-surface);
   padding: 6px 12px;
   cursor: pointer;
   font-weight: 600;
 }
 
 .filter.active {
-  background: #111;
-  color: #fff;
+  background: var(--bb-header-bg);
+  color: var(--bb-header-text);
 }
 
 .cards {
@@ -97,8 +124,8 @@ main {
 }
 
 .card {
-  border: 2px solid #111;
-  background: #fff;
+  border: 2px solid var(--bb-border);
+  background: var(--bb-surface);
   padding: 14px 16px;
 }
 
@@ -112,6 +139,7 @@ main {
 .card-title {
   font-weight: 700;
   font-size: 1.05rem;
+  color: var(--bb-text-strong);
 }
 
 .badge {
@@ -119,54 +147,105 @@ main {
   font-weight: 700;
   text-transform: uppercase;
   padding: 4px 8px;
-  border: 2px solid #111;
+  border: 2px solid var(--bb-border);
+  flex-shrink: 0;
 }
 
 .badge.fazendo {
   background: #fff3cd;
+  color: #111;
 }
 
 .badge.testar {
   background: #cfe2ff;
+  color: #111;
 }
 
 .badge.ok {
   background: #d1e7dd;
+  color: #111;
 }
 
 .badge.falhou {
   background: #f8d7da;
+  color: #111;
 }
 
-.meta {
-  margin-top: 8px;
-  font-size: 0.9rem;
-  color: #222;
+.card-section {
+  margin-top: 12px;
 }
 
-.meta strong {
-  color: #000;
+.section-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--bb-text-strong);
+  margin-bottom: 6px;
+}
+
+.section-body {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: var(--bb-muted);
+}
+
+.repo-chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.repo-chip {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border: 1px solid var(--bb-border);
+  background: var(--bb-chip-bg);
+  color: var(--bb-text);
+}
+
+ol.steps {
+  margin: 0;
+  padding-left: 1.35rem;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: var(--bb-muted);
+}
+
+ol.steps li {
+  margin-bottom: 0.35rem;
+}
+
+ol.steps li:last-child {
+  margin-bottom: 0;
 }
 
 .actions {
-  margin-top: 12px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--bb-border);
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
 .btn {
-  border: 2px solid #111;
-  background: #fff;
-  color: #111;
+  border: 2px solid var(--bb-border);
+  background: var(--bb-surface);
+  color: var(--bb-text);
   padding: 8px 14px;
   font-weight: 700;
   cursor: pointer;
 }
 
 .btn.primary {
-  background: #111;
-  color: #fff;
+  background: var(--bb-header-bg);
+  color: var(--bb-header-text);
 }
 
 .btn.danger {
@@ -176,11 +255,11 @@ main {
 }
 
 .empty {
-  border: 2px dashed #111;
+  border: 2px dashed var(--bb-border);
   padding: 24px;
   text-align: center;
   font-weight: 600;
-  background: #fff;
+  background: var(--bb-surface);
 }
 
 .inline-form {
@@ -190,8 +269,10 @@ main {
 }
 
 input[type="text"] {
-  border: 2px solid #111;
+  border: 2px solid var(--bb-border);
   padding: 8px 10px;
   font-size: 1rem;
   min-width: 160px;
+  background: var(--bb-surface);
+  color: var(--bb-text);
 }

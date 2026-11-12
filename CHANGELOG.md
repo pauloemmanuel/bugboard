@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-11-11
+
+### Changed
+
+- README: onboarding for GitHub adopters (quick start, MCP for Cursor and Claude Code, tool table, schema)
+
+### Fixed
+
+- Web UI: numbered step list and clearer card sections (repos as chips, section labels)
+
 ## [0.1.1] - 2026-11-11
 
 ### Fixed
