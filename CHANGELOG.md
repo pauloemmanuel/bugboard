@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-11-12
+
+### Changed
+
+- Web UI: `Ambiente: LOCAL|STAGING|PROD` in prep renders as a header chip on the card, not a copy row in Preparação
+- E-mail and Senha (Password) keep value-only copy buttons in Preparação
+
 ## [0.3.4] - 2026-11-12
 
 ### Added

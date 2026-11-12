@@ -1,18 +1,16 @@
 import { CopyButton } from "./CopyButton";
-import { parsePrepLine } from "./prepLine";
+import { parsePrepLine, prepLinesForDisplay } from "./prepLine";
 
 export function PrepList({ lines }: { lines: string[] }) {
+  const visible = prepLinesForDisplay(lines);
   return (
     <ul className="prep-list">
-      {lines.map((line, i) => {
+      {visible.map((line, i) => {
         const parsed = parsePrepLine(line);
         if (parsed.kind === "structured") {
+          if (parsed.key === "ambiente") return null;
           const copyLabel =
-            parsed.key === "email"
-              ? "Copiar e-mail"
-              : parsed.key === "senha"
-                ? "Copiar senha"
-                : "Copiar ambiente";
+            parsed.key === "email" ? "Copiar e-mail" : "Copiar senha";
           return (
             <li key={i} className="prep-row prep-row-structured">
               <span className="prep-key">{parsed.label}</span>

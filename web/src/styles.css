@@ -294,6 +294,18 @@ main {
   border-radius: 999px;
 }
 
+.ambiente-chip {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 4px 10px;
+  border: 1px solid var(--bb-accent-soft);
+  background: var(--bb-accent-soft);
+  color: var(--bb-text-strong);
+  border-radius: 999px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .card-journey {
   padding-bottom: 14px;
 }

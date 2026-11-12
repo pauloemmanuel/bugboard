@@ -1,5 +1,6 @@
-const STRUCTURED_PREP =
-  /^(E-?mail|Senha|Password|Ambiente)\s*:\s*(.+)$/i;
+const AMBIENTE_LINE = /^Ambiente\s*:\s*(.+)$/i;
+
+const STRUCTURED_PREP = /^(E-?mail|Senha|Password|Ambiente)\s*:\s*(.+)$/i;
 
 export type StructuredPrepKey = "email" | "senha" | "ambiente";
 
@@ -19,6 +20,18 @@ function normalizeKey(raw: string): StructuredPrepKey | null {
   if (k === "senha" || k === "password") return "senha";
   if (k === "ambiente") return "ambiente";
   return null;
+}
+
+export function extractAmbienteFromPrep(lines: string[]): string | null {
+  for (const line of lines) {
+    const m = line.trim().match(AMBIENTE_LINE);
+    if (m) return m[1].trim();
+  }
+  return null;
+}
+
+export function prepLinesForDisplay(lines: string[]): string[] {
+  return lines.filter((line) => !AMBIENTE_LINE.test(line.trim()));
 }
 
 export function parsePrepLine(line: string): ParsedPrepLine {

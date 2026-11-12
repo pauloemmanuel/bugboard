@@ -13,6 +13,7 @@ import {
 } from "./api";
 import { PlatformIcon } from "./PlatformIcon";
 import { PrepList } from "./PrepList";
+import { extractAmbienteFromPrep, prepLinesForDisplay } from "./prepLine";
 import { SectionText } from "./SectionText";
 
 type Filter = "todos" | BugStatus;
@@ -135,7 +136,16 @@ function CardActions({
   );
 }
 
+function AmbienteChip({ value }: { value: string }) {
+  return (
+    <span className="ambiente-chip" title={`Ambiente: ${value}`}>
+      {value}
+    </span>
+  );
+}
+
 function BugCardBody({ bug }: { bug: Bug }) {
+  const prepVisible = prepLinesForDisplay(bug.prep);
   return (
     <>
       {bug.repos.length > 0 && (
@@ -153,7 +163,7 @@ function BugCardBody({ bug }: { bug: Bug }) {
       {bug.kind === "usecase" && (
         <div className="card-section">
           <div className="section-label">Preparação</div>
-          {bug.prep.length > 0 ? (
+          {prepVisible.length > 0 ? (
             <PrepList lines={bug.prep} />
           ) : (
             <p className="section-body muted-hint">Sem preparação neste card.</p>
@@ -204,6 +214,7 @@ function UseCaseCard({
     onFail: (b: Bug) => void;
   };
 }) {
+  const ambiente = extractAmbienteFromPrep(bug.prep);
   return (
     <article className="card card-child">
       <div className="card-head">
@@ -211,7 +222,10 @@ function UseCaseCard({
           <span className="uc-n">#{bug.n}</span> {bug.title}
           {bug.round > 1 ? ` (rodada ${bug.round})` : ""}
         </div>
-        <StatusBadge status={bug.status} />
+        <div className="head-badges">
+          {ambiente ? <AmbienteChip value={ambiente} /> : null}
+          <StatusBadge status={bug.status} />
+        </div>
       </div>
       <BugCardBody bug={bug} />
       <CardActions
@@ -240,6 +254,7 @@ function JourneyCard({
   const progress = childProgressText(bug);
   const platform = bug.platform;
   const children = bug.children ?? [];
+  const ambiente = extractAmbienteFromPrep(bug.prep);
 
   return (
     <article className="card card-journey">
@@ -252,6 +267,7 @@ function JourneyCard({
           </span>
         </div>
         <div className="head-badges">
+          {ambiente ? <AmbienteChip value={ambiente} /> : null}
           {progress && <span className="progress-chip">{progress}</span>}
           <StatusBadge status={bug.status} />
         </div>
