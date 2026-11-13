@@ -14,6 +14,7 @@ import {
 import { PlatformIcon } from "./PlatformIcon";
 import { PrepList } from "./PrepList";
 import { extractAmbienteFromPrep, prepLinesForDisplay } from "./prepLine";
+import { FailAiPromptDialog } from "./FailAiPromptDialog";
 import { SectionText } from "./SectionText";
 
 type Filter = "todos" | BugStatus;
@@ -430,6 +431,9 @@ export function App() {
   const [sheetToArchive, setSheetToArchive] = useState<Sheet | null>(null);
   const [archiving, setArchiving] = useState(false);
   const [failPromptBug, setFailPromptBug] = useState<Bug | null>(null);
+  const [failAiFollowUp, setFailAiFollowUp] = useState<{ bug: Bug; motivo: string } | null>(
+    null,
+  );
   const [failing, setFailing] = useState(false);
   const activeRef = useRef<string | null>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
@@ -583,6 +587,8 @@ export function App() {
   }, [initialLoading, activeSheetId, sheets]);
 
   const visible = filterJourneys(bugs, filter);
+  const activeSheetName =
+    sheets.find((s) => s.id === activeSheetId)?.name ?? "Sem aba";
 
   const handlers = {
     onReady: async (bug: Bug) => {
@@ -645,6 +651,7 @@ export function App() {
         setBugs((prev) => mergeBugIntoTree(prev, updated));
         await refreshStats(activeSheetId);
         setFailPromptBug(null);
+        setFailAiFollowUp({ bug: updated, motivo });
       } catch {
         setBugs(bugsSnapshot.current ?? bugs);
         setError("Não foi possível marcar como falhou.");
@@ -792,6 +799,12 @@ export function App() {
         busy={archiving}
         onConfirm={() => void onConfirmArchive()}
         onCancel={() => setSheetToArchive(null)}
+      />
+      <FailAiPromptDialog
+        sheetName={activeSheetName}
+        bug={failAiFollowUp?.bug ?? null}
+        motivo={failAiFollowUp?.motivo ?? ""}
+        onClose={() => setFailAiFollowUp(null)}
       />
     </>
   );

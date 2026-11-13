@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.7] - 2026-11-12
+
+### Added
+
+- Web UI: after **Falhou** + motivo, follow-up dialog with **Copiar prompt pra IA** (aba, card #n, título, motivo, repos/onde/passos when set) and **OK** to dismiss
+- Brief **Copiado** feedback on the copy button
+
 ## [0.3.6] - 2026-11-12
 
 ### Added
