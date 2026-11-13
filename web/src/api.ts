@@ -8,6 +8,15 @@ export interface Sheet {
   archived: number;
 }
 
+export interface BugLinkView {
+  id: string;
+  n: number;
+  title: string;
+  status: BugStatus;
+  type: string;
+  direction: "out" | "in";
+}
+
 export interface Bug {
   id: string;
   sheet_id: string;
@@ -24,6 +33,9 @@ export interface Bug {
   kind: BugKind;
   platform: Platform | null;
   prep: string[];
+  files?: string[];
+  symbols?: string[];
+  links?: BugLinkView[];
   updated_at?: string;
   children?: Bug[];
 }

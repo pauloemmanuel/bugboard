@@ -69,6 +69,8 @@ Archived sheets are hidden from the default list (MCP: `sheet_archive`).
 | `fix` | string | What changed or what to verify |
 | `round` | number | Increments when a failed card returns to `testar` |
 | `note` | string | Tester notes on pass/fail |
+| `files` | string[] | Repo-relative paths prefixed with the repo folder, e.g. `wellmexh-frontend-react-native/app/hooks/x.ts` |
+| `symbols` | string[] | Function or component names |
 
 ### Statuses
 
@@ -129,12 +131,31 @@ See also [`.mcp.json`](./.mcp.json) in this repo for a working absolute-path exa
 | `sheet_create` | Create a sheet tab |
 | `sheet_rename` | Rename a sheet |
 | `sheet_archive` | Archive a sheet |
-| `bug_list` | List bugs on a sheet (optional `status` filter) |
+| `bug_list` | List bugs on a sheet (optional `status` filter, `compact: true` for one line per card) |
 | `bug_get` | Get one bug by id |
 | `bug_create` | Create a card |
 | `bug_update` | Patch fields (round auto-increment rules apply) |
 | `bug_pass` | Human pass (`ok`) |
 | `bug_fail` | Human fail (`falhou`) |
+| `board_query` | Graphify-style BFS over the board graph (`sheet_id?`, `question`, `depth=2`, `budget=2000`) |
+| `board_explain` | Neighbors of a card (`#n`/id), file or symbol, grouped by edge type |
+| `board_path` | Shortest path between two cards, files or symbols |
+| `board_clusters` | Card groups joined by shared code, links or similar titles, with a suggested journey each |
+| `bug_link` / `bug_unlink` | Link cards: `related`, `depends_on`, `duplicate`, `regression_of`, `same_flow` |
+
+## Knowledge graph
+
+The board is also a graph, rebuilt in memory after every write. Nodes: sheets, journeys, use cases, repos, files, symbols. Edges: `parent`, `in_sheet`, `in_repo`, `touches_file`, `touches_symbol`, explicit links, plus inferred `shares_code` (same file or symbol) and `similar_title` (token overlap).
+
+File nodes are matched against `<BUGBOARD_CODE_ROOT>/<repo>/graphify-out/graph.json` (default `~/Projetos/GroupLookstar`); a hit adds the graphify node id and community, so a card connects into the code graph.
+
+Every rebuild writes `~/.bugboard/graph.json` in graphify's format, so the CLI works too:
+
+```bash
+graphify query "saque documento" --graph ~/.bugboard/graph.json
+```
+
+Env: `BUGBOARD_DATA_DIR` (default `~/.bugboard`), `BUGBOARD_CODE_ROOT`. Smoke test: `npm run build && node test/graph-smoke.mjs` (temp dirs only).
 
 ## HTTP API
 

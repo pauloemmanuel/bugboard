@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-13
+
+### Added
+
+- Card fields `files[]` and `symbols[]`, and a `bug_links` table (`related`, `depends_on`, `duplicate`, `regression_of`, `same_flow`); existing databases migrate in place
+- In-memory board knowledge graph with inferred `shares_code` and `similar_title` edges, linked to repo `graphify-out/graph.json` files via `BUGBOARD_CODE_ROOT`
+- MCP tools `board_query`, `board_explain`, `board_path`, `board_clusters`, `bug_link`, `bug_unlink`; `bug_list` accepts `compact: true`
+- `~/.bugboard/graph.json` export in graphify format (works with `graphify query --graph`)
+- `BUGBOARD_DATA_DIR` env override
+- Web UI: Files, Symbols and clickable Related on cards
+
 ## [0.3.7] - 2026-11-12
 
 ### Added

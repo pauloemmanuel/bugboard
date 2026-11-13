@@ -11,7 +11,11 @@ import {
   failBug,
   getBug,
   getDb,
+  linkBugs,
+  listBugsFlat,
   listBugsNested,
+  resolveBug,
+  unlinkBugs,
   listSheets,
   passBug,
   updateBug,
@@ -19,7 +23,19 @@ import {
 } from "./db.js";
 import { DB_PATH, baseUrl, getPort } from "./paths.js";
 import { ensureServerRunning, healthOk, openBoard } from "./open.js";
-import type { BugStatus } from "./types.js";
+import { boardClusters, boardExplain, boardPath, boardQuery } from "./graph.js";
+import { LINK_TYPES } from "./types.js";
+import type { Bug, BugStatus, LinkType } from "./types.js";
+
+function plain(text: string, isError = false) {
+  return { content: [{ type: "text" as const, text }], ...(isError ? { isError: true } : {}) };
+}
+
+function compactLine(b: Bug): string {
+  const code = b.files.length || b.symbols.length ? ` files=${b.files.length} sym=${b.symbols.length}` : "";
+  const parent = b.parent_id ? ` parent=${b.parent_id.slice(0, 8)}` : "";
+  return `#${b.n} [${b.status}] ${b.kind} ${b.title} (id=${b.id.slice(0, 8)}${parent}${code})`;
+}
 
 function textContent(data: unknown) {
   return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
@@ -29,7 +45,7 @@ export async function runMcpServer(): Promise<void> {
   getDb();
 
   const server = new Server(
-    { name: "bugboard", version: "0.2.0" },
+    { name: "bugboard", version: "0.4.0" },
     { capabilities: { tools: {} } },
   );
 
@@ -92,6 +108,7 @@ export async function runMcpServer(): Promise<void> {
           properties: {
             sheet_id: { type: "string" },
             status: { type: "string", enum: ["fazendo", "testar", "ok", "falhou"] },
+            compact: { type: "boolean", description: "One line per card, no prep/steps" },
           },
           required: ["sheet_id"],
           additionalProperties: false,
@@ -126,6 +143,8 @@ export async function runMcpServer(): Promise<void> {
             kind: { type: "string", enum: ["journey", "usecase"] },
             platform: { type: "string", enum: ["ios", "android", "web", "ipad"] },
             prep: { type: "array", items: { type: "string" } },
+            files: { type: "array", items: { type: "string" }, description: "Repo-relative paths prefixed with the repo folder" },
+            symbols: { type: "array", items: { type: "string" }, description: "Function or component names" },
           },
           required: ["sheet_id", "title"],
           additionalProperties: false,
@@ -149,8 +168,87 @@ export async function runMcpServer(): Promise<void> {
             note: { type: "string" },
             platform: { type: "string", enum: ["ios", "android", "web", "ipad"] },
             prep: { type: "array", items: { type: "string" } },
+            files: { type: "array", items: { type: "string" }, description: "Repo-relative paths prefixed with the repo folder" },
+            symbols: { type: "array", items: { type: "string" }, description: "Function or component names" },
           },
           required: ["id"],
+          additionalProperties: false,
+        },
+      },
+      {
+        name: "board_query",
+        description:
+          'Graphify-style query over the board graph: keyword-match start nodes, BFS, NODE/EDGE lines. Like `graphify query "<q>"`.',
+        inputSchema: {
+          type: "object",
+          properties: {
+            sheet_id: { type: "string" },
+            question: { type: "string" },
+            depth: { type: "number", description: "default 2" },
+            budget: { type: "number", description: "token budget, default 2000" },
+          },
+          required: ["question"],
+          additionalProperties: false,
+        },
+      },
+      {
+        name: "board_explain",
+        description: "Neighbors of a card (#n or id), file path or symbol, grouped by edge type",
+        inputSchema: {
+          type: "object",
+          properties: { ref: { type: "string" }, budget: { type: "number" } },
+          required: ["ref"],
+          additionalProperties: false,
+        },
+      },
+      {
+        name: "board_path",
+        description: "Shortest path between two cards, files or symbols",
+        inputSchema: {
+          type: "object",
+          properties: { a: { type: "string" }, b: { type: "string" }, budget: { type: "number" } },
+          required: ["a", "b"],
+          additionalProperties: false,
+        },
+      },
+      {
+        name: "board_clusters",
+        description:
+          "Groups of cards connected by shared code, links or similar titles, with a suggested journey per group (for building flows and merging duplicates)",
+        inputSchema: {
+          type: "object",
+          properties: { sheet_id: { type: "string" }, budget: { type: "number" } },
+          required: ["sheet_id"],
+          additionalProperties: false,
+        },
+      },
+      {
+        name: "bug_link",
+        description: "Link two cards. from/to: card id, id prefix (8+) or #n (add sheet_id if n is ambiguous)",
+        inputSchema: {
+          type: "object",
+          properties: {
+            from: { type: "string" },
+            to: { type: "string" },
+            type: { type: "string", enum: LINK_TYPES },
+            sheet_id: { type: "string" },
+          },
+          required: ["from", "to", "type"],
+          additionalProperties: false,
+        },
+      },
+      {
+        name: "bug_unlink",
+        description: "Remove links between two cards (all types unless type is set)",
+        inputSchema: {
+          type: "object",
+          properties: {
+            from: { type: "string" },
+            to: { type: "string" },
+            type: { type: "string", enum: LINK_TYPES },
+            sheet_id: { type: "string" },
+          },
+          required: ["from", "to"],
           additionalProperties: false,
         },
       },
@@ -218,6 +316,10 @@ export async function runMcpServer(): Promise<void> {
       }
       case "bug_list": {
         const status = a.status as BugStatus | undefined;
+        if (a.compact === true) {
+          const flat = listBugsFlat(String(a.sheet_id), status);
+          return plain(flat.map(compactLine).join("\n") || "(empty)");
+        }
         return textContent({ bugs: listBugsNested(String(a.sheet_id), status) });
       }
       case "bug_get": {
@@ -239,6 +341,8 @@ export async function runMcpServer(): Promise<void> {
           kind: a.kind as "journey" | "usecase" | undefined,
           platform: a.platform as "ios" | "android" | "web" | "ipad" | undefined,
           prep: a.prep as string[] | undefined,
+          files: a.files as string[] | undefined,
+          symbols: a.symbols as string[] | undefined,
         });
         if (!bug) return { content: [{ type: "text", text: "sheet not found" }], isError: true };
         return textContent({ bug });
@@ -255,9 +359,40 @@ export async function runMcpServer(): Promise<void> {
           note: a.note as string | undefined,
           platform: a.platform as "ios" | "android" | "web" | "ipad" | undefined,
           prep: a.prep as string[] | undefined,
+          files: a.files as string[] | undefined,
+          symbols: a.symbols as string[] | undefined,
         });
         if (!bug) return { content: [{ type: "text", text: "not found" }], isError: true };
         return textContent({ bug });
+      }
+      case "board_query":
+        return plain(
+          boardQuery({
+            sheet_id: a.sheet_id as string | undefined,
+            question: String(a.question),
+            depth: a.depth as number | undefined,
+            budget: a.budget as number | undefined,
+          }),
+        );
+      case "board_explain":
+        return plain(boardExplain(String(a.ref), a.budget as number | undefined));
+      case "board_path":
+        return plain(boardPath(String(a.a), String(a.b), a.budget as number | undefined));
+      case "board_clusters":
+        return plain(boardClusters(String(a.sheet_id), a.budget as number | undefined));
+      case "bug_link":
+      case "bug_unlink": {
+        const sid = a.sheet_id as string | undefined;
+        const from = resolveBug(String(a.from), sid);
+        const to = resolveBug(String(a.to), sid);
+        if (!from || !to) return plain("card not found or ambiguous (pass sheet_id for #n)", true);
+        if (name === "bug_link") {
+          const r = linkBugs(from.id, to.id, a.type as LinkType);
+          if (typeof r === "string") return plain(r, true);
+          return plain(`linked #${from.n} --${r.type}--> #${to.n}`);
+        }
+        const n = unlinkBugs(from.id, to.id, a.type as LinkType | undefined);
+        return plain(`removed ${n} link(s) between #${from.n} and #${to.n}`);
       }
       case "bug_pass": {
         const bug = passBug(String(a.id), a.note as string | undefined);

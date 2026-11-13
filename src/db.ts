@@ -3,9 +3,43 @@ import { randomUUID } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import { DB_PATH } from "./paths.js";
 import { SCHEMA_SQL } from "./schema.js";
-import type { BoardStats, Bug, BugKind, BugRow, BugStatus, Platform, Sheet } from "./types.js";
+import { LINK_TYPES } from "./types.js";
+import type {
+  BoardStats,
+  Bug,
+  BugKind,
+  BugLink,
+  BugLinkView,
+  BugRow,
+  BugStatus,
+  LinkType,
+  Platform,
+  Sheet,
+} from "./types.js";
 
 let _db: Database.Database | undefined;
+
+/** Bumped on every write made by this process; the graph cache keys on it. */
+let _writeVersion = 0;
+export function bumpWrite(): void {
+  _writeVersion++;
+}
+/** Changes when this process or any other process wrote to the DB. */
+export function dbVersion(): string {
+  const db = getDb();
+  const dv = db.pragma("data_version", { simple: true });
+  return `${_writeVersion}:${String(dv)}`;
+}
+
+function cleanList(v: string[] | undefined): string[] {
+  if (!v) return [];
+  const seen = new Set<string>();
+  for (const x of v) {
+    const t = String(x).trim();
+    if (t) seen.add(t);
+  }
+  return [...seen];
+}
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -69,6 +103,13 @@ function migrateBugsTable(db: Database.Database): void {
     schemaChanged = true;
   }
 
+  if (!names.has("files")) {
+    db.exec("ALTER TABLE bugs ADD COLUMN files TEXT NOT NULL DEFAULT '[]'");
+  }
+  if (!names.has("symbols")) {
+    db.exec("ALTER TABLE bugs ADD COLUMN symbols TEXT NOT NULL DEFAULT '[]'");
+  }
+
   const after = db.prepare("PRAGMA table_info(bugs)").all() as { name: string }[];
   if (after.some((c) => c.name === "parent_id")) {
     db.exec("CREATE INDEX IF NOT EXISTS idx_bugs_parent ON bugs(parent_id)");
@@ -113,6 +154,8 @@ export function rowToBug(row: BugRow): Bug {
     kind: (row.kind === "usecase" ? "usecase" : "journey") as BugKind,
     platform: parsePlatform(row.platform),
     prep: parseJsonArray(row.prep ?? "[]"),
+    files: parseJsonArray(row.files ?? "[]"),
+    symbols: parseJsonArray(row.symbols ?? "[]"),
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
@@ -156,6 +199,7 @@ export function createSheet(name: string): Sheet {
   db.prepare(
     "INSERT INTO sheets (id, name, archived, created_at, updated_at) VALUES (?, ?, 0, ?, ?)",
   ).run(id, name.trim(), t, t);
+  bumpWrite();
   return db.prepare("SELECT * FROM sheets WHERE id = ?").get(id) as Sheet;
 }
 
@@ -175,6 +219,7 @@ export function updateSheet(
     t,
     id,
   );
+  bumpWrite();
   return db.prepare("SELECT * FROM sheets WHERE id = ?").get(id) as Sheet;
 }
 
@@ -194,6 +239,11 @@ function bugMatchesFilter(bug: Bug, status?: BugStatus): boolean {
   return bug.status === status;
 }
 
+export function listBugsFlat(sheetId: string, status?: BugStatus): Bug[] {
+  const db = getDb();
+  return fetchBugRows(db, sheetId, status).map(rowToBug);
+}
+
 export function listBugs(sheetId: string, status?: BugStatus): Bug[] {
   const db = getDb();
   const rows = fetchBugRows(db, sheetId);
@@ -204,6 +254,8 @@ export function listBugsNested(sheetId: string, status?: BugStatus): Bug[] {
   const db = getDb();
   const rows = fetchBugRows(db, sheetId);
   const flat = rows.map(rowToBug);
+  const lv = linkViews(db, flat.map((b) => b.id));
+  for (const b of flat) b.links = lv.get(b.id) ?? [];
   const byParent = new Map<string | null, Bug[]>();
   for (const b of flat) {
     const key = b.parent_id;
@@ -244,7 +296,100 @@ export function listBugsNested(sheetId: string, status?: BugStatus): Bug[] {
 export function getBug(id: string): Bug | null {
   const db = getDb();
   const row = db.prepare("SELECT * FROM bugs WHERE id = ?").get(id) as BugRow | undefined;
-  return row ? rowToBug(row) : null;
+  if (!row) return null;
+  const bug = rowToBug(row);
+  bug.links = linkViews(db, [id]).get(id) ?? [];
+  return bug;
+}
+
+export function listAllBugs(): Bug[] {
+  const db = getDb();
+  return (db.prepare("SELECT * FROM bugs ORDER BY sheet_id, n").all() as BugRow[]).map(rowToBug);
+}
+
+export function listAllLinks(): BugLink[] {
+  return getDb().prepare("SELECT * FROM bug_links").all() as BugLink[];
+}
+
+function linkViews(db: Database.Database, ids: string[]): Map<string, BugLinkView[]> {
+  const out = new Map<string, BugLinkView[]>();
+  if (ids.length === 0) return out;
+  const ph = ids.map(() => "?").join(",");
+  const rows = db
+    .prepare(
+      `SELECT l.from_id, l.to_id, l.type, b.id AS oid, b.n, b.title, b.status
+       FROM bug_links l
+       JOIN bugs b ON b.id = CASE WHEN l.from_id IN (${ph}) THEN l.to_id ELSE l.from_id END
+       WHERE l.from_id IN (${ph}) OR l.to_id IN (${ph})`,
+    )
+    .all(...ids, ...ids, ...ids) as {
+    from_id: string;
+    to_id: string;
+    type: LinkType;
+    oid: string;
+    n: number;
+    title: string;
+    status: BugStatus;
+  }[];
+  const want = new Set(ids);
+  for (const r of rows) {
+    const add = (self: string, direction: "out" | "in") => {
+      const list = out.get(self) ?? [];
+      list.push({ id: r.oid, n: r.n, title: r.title, status: r.status, type: r.type, direction });
+      out.set(self, list);
+    };
+    if (want.has(r.from_id)) add(r.from_id, "out");
+    if (want.has(r.to_id)) add(r.to_id, "in");
+  }
+  return out;
+}
+
+/** Resolve a card by full id, id prefix (8+ chars) or "#n"/"n" (needs sheetId when ambiguous). */
+export function resolveBug(ref: string, sheetId?: string): Bug | null {
+  const db = getDb();
+  const r = String(ref).trim();
+  const byId = db.prepare("SELECT * FROM bugs WHERE id = ?").get(r) as BugRow | undefined;
+  if (byId) return rowToBug(byId);
+  const m = /^#?(\d+)$/.exec(r);
+  if (m) {
+    const n = Number(m[1]);
+    const rows = (
+      sheetId
+        ? db.prepare("SELECT * FROM bugs WHERE n = ? AND sheet_id = ?").all(n, sheetId)
+        : db.prepare("SELECT * FROM bugs WHERE n = ?").all(n)
+    ) as BugRow[];
+    return rows.length === 1 ? rowToBug(rows[0]) : null;
+  }
+  if (r.length >= 8) {
+    const rows = db.prepare("SELECT * FROM bugs WHERE id LIKE ?").all(`${r}%`) as BugRow[];
+    if (rows.length === 1) return rowToBug(rows[0]);
+  }
+  return null;
+}
+
+export function linkBugs(fromId: string, toId: string, type: LinkType): BugLink | string {
+  const db = getDb();
+  if (!LINK_TYPES.includes(type)) return `type must be one of ${LINK_TYPES.join(", ")}`;
+  if (fromId === toId) return "cannot link a card to itself";
+  const t = nowIso();
+  db.prepare(
+    "INSERT OR IGNORE INTO bug_links (from_id, to_id, type, created_at) VALUES (?, ?, ?, ?)",
+  ).run(fromId, toId, type, t);
+  bumpWrite();
+  return { from_id: fromId, to_id: toId, type, created_at: t };
+}
+
+/** Remove a link; without type removes every type between the pair (either direction). */
+export function unlinkBugs(aId: string, bId: string, type?: LinkType): number {
+  const db = getDb();
+  const sql = `DELETE FROM bug_links WHERE ((from_id = ? AND to_id = ?) OR (from_id = ? AND to_id = ?))${
+    type ? " AND type = ?" : ""
+  }`;
+  const args: unknown[] = [aId, bId, bId, aId];
+  if (type) args.push(type);
+  const n = db.prepare(sql).run(...args).changes;
+  if (n) bumpWrite();
+  return n;
 }
 
 function nextBugN(db: Database.Database, sheetId: string): number {
@@ -267,6 +412,8 @@ export interface CreateBugInput {
   kind?: BugKind;
   platform?: Platform | null;
   prep?: string[];
+  files?: string[];
+  symbols?: string[];
 }
 
 export function createBug(sheetId: string, input: CreateBugInput): Bug | null {
@@ -294,8 +441,8 @@ export function createBug(sheetId: string, input: CreateBugInput): Bug | null {
   const status = input.status ?? "fazendo";
   db.prepare(
     `INSERT INTO bugs (id, sheet_id, n, title, repos, status, where_text, steps, fix, round, note,
-      parent_id, kind, platform, prep, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      parent_id, kind, platform, prep, files, symbols, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     sheetId,
@@ -312,9 +459,12 @@ export function createBug(sheetId: string, input: CreateBugInput): Bug | null {
     kind,
     input.platform ?? null,
     JSON.stringify(input.prep ?? []),
+    JSON.stringify(cleanList(input.files)),
+    JSON.stringify(cleanList(input.symbols)),
     t,
     t,
   );
+  bumpWrite();
   return getBug(id);
 }
 
@@ -329,6 +479,8 @@ export interface UpdateBugInput {
   note?: string;
   platform?: Platform | null;
   prep?: string[];
+  files?: string[];
+  symbols?: string[];
 }
 
 export function updateBug(id: string, input: UpdateBugInput): Bug | null {
@@ -350,7 +502,7 @@ export function updateBug(id: string, input: UpdateBugInput): Bug | null {
   db.prepare(
     `UPDATE bugs SET
       title = ?, repos = ?, status = ?, where_text = ?, steps = ?, fix = ?, round = ?, note = ?,
-      platform = ?, prep = ?, updated_at = ?
+      platform = ?, prep = ?, files = ?, symbols = ?, updated_at = ?
      WHERE id = ?`,
   ).run(
     input.title !== undefined ? input.title.trim() : existing.title,
@@ -363,9 +515,18 @@ export function updateBug(id: string, input: UpdateBugInput): Bug | null {
     input.note !== undefined ? input.note : existing.note,
     input.platform !== undefined ? input.platform : existing.platform,
     JSON.stringify(input.prep !== undefined ? input.prep : parseJsonArray(existing.prep ?? "[]")),
+    JSON.stringify(
+      input.files !== undefined ? cleanList(input.files) : parseJsonArray(existing.files ?? "[]"),
+    ),
+    JSON.stringify(
+      input.symbols !== undefined
+        ? cleanList(input.symbols)
+        : parseJsonArray(existing.symbols ?? "[]"),
+    ),
     t,
     id,
   );
+  bumpWrite();
   return getBug(id);
 }
 
@@ -380,6 +541,7 @@ export function passBug(id: string, note?: string): Bug | null {
     t,
     id,
   );
+  bumpWrite();
   return getBug(id);
 }
 
@@ -394,6 +556,7 @@ export function failBug(id: string, note?: string): Bug | null {
     t,
     id,
   );
+  bumpWrite();
   return getBug(id);
 }
 

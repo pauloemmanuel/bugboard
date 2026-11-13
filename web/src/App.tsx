@@ -161,6 +161,54 @@ function BugCardBody({ bug }: { bug: Bug }) {
           </ul>
         </div>
       )}
+      {(bug.files?.length ?? 0) > 0 && (
+        <div className="card-section">
+          <div className="section-label">Files</div>
+          <ul className="repo-chips code-chips">
+            {bug.files!.map((f) => (
+              <li key={f} className="repo-chip" title={f}>
+                {f}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {(bug.symbols?.length ?? 0) > 0 && (
+        <div className="card-section">
+          <div className="section-label">Symbols</div>
+          <ul className="repo-chips code-chips">
+            {bug.symbols!.map((x) => (
+              <li key={x} className="repo-chip">
+                {x}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {(bug.links?.length ?? 0) > 0 && (
+        <div className="card-section">
+          <div className="section-label">Related</div>
+          <ul className="repo-chips">
+            {bug.links!.map((l) => (
+              <li key={`${l.id}:${l.type}:${l.direction}`}>
+                <a
+                  className="repo-chip related-chip"
+                  href={`#bug-${l.id}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const el = document.getElementById(`bug-${l.id}`);
+                    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+                    el?.classList.add("flash");
+                    window.setTimeout(() => el?.classList.remove("flash"), 1200);
+                  }}
+                >
+                  {l.type.replace("_", " ")} #{l.n} {l.title}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {bug.kind === "usecase" && (
         <div className="card-section">
           <div className="section-label">Preparação</div>
@@ -221,7 +269,7 @@ function UseCaseCard({
 }) {
   const ambiente = extractAmbienteFromPrep(bug.prep);
   return (
-    <article className="card card-child">
+    <article className="card card-child" id={`bug-${bug.id}`}>
       <div className="card-head">
         <div className="card-title">
           <span className="uc-n">#{bug.n}</span> {bug.title}
@@ -262,7 +310,7 @@ function JourneyCard({
   const ambiente = extractAmbienteFromPrep(bug.prep);
 
   return (
-    <article className="card card-journey">
+    <article className="card card-journey" id={`bug-${bug.id}`}>
       <div className="card-head">
         <div className="card-title journey-title">
           <PlatformIcon platform={platform} />

@@ -74,6 +74,8 @@ export function createApp(): Hono {
       kind?: "journey" | "usecase";
       platform?: "ios" | "android" | "web" | "ipad" | null;
       prep?: string[];
+      files?: string[];
+      symbols?: string[];
     };
     if (!body.title?.trim()) {
       return c.json({ error: "title required" }, 400);

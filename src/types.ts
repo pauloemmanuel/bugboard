@@ -26,6 +26,8 @@ export interface BugRow {
   kind: string;
   platform: string | null;
   prep: string;
+  files: string;
+  symbols: string;
   created_at: string;
   updated_at: string;
 }
@@ -46,6 +48,9 @@ export interface Bug {
   kind: BugKind;
   platform: Platform | null;
   prep: string[];
+  files: string[];
+  symbols: string[];
+  links?: BugLinkView[];
   children?: Bug[];
   created_at: string;
   updated_at: string;
@@ -57,4 +62,29 @@ export interface BoardStats {
   testar: number;
   ok: number;
   falhou: number;
+}
+
+export type LinkType = "related" | "depends_on" | "duplicate" | "regression_of" | "same_flow";
+export const LINK_TYPES: LinkType[] = [
+  "related",
+  "depends_on",
+  "duplicate",
+  "regression_of",
+  "same_flow",
+];
+
+export interface BugLink {
+  from_id: string;
+  to_id: string;
+  type: LinkType;
+  created_at: string;
+}
+
+export interface BugLinkView {
+  id: string;
+  n: number;
+  title: string;
+  status: BugStatus;
+  type: LinkType;
+  direction: "out" | "in";
 }

@@ -23,6 +23,8 @@ CREATE TABLE IF NOT EXISTS bugs (
   kind TEXT NOT NULL DEFAULT 'journey',
   platform TEXT NULL,
   prep TEXT NOT NULL DEFAULT '[]',
+  files TEXT NOT NULL DEFAULT '[]',
+  symbols TEXT NOT NULL DEFAULT '[]',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   UNIQUE(sheet_id, n)
@@ -30,4 +32,13 @@ CREATE TABLE IF NOT EXISTS bugs (
 
 CREATE INDEX IF NOT EXISTS idx_bugs_sheet ON bugs(sheet_id);
 CREATE INDEX IF NOT EXISTS idx_bugs_status ON bugs(status);
+
+CREATE TABLE IF NOT EXISTS bug_links (
+  from_id TEXT NOT NULL REFERENCES bugs(id) ON DELETE CASCADE,
+  to_id TEXT NOT NULL REFERENCES bugs(id) ON DELETE CASCADE,
+  type TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (from_id, to_id, type)
+);
+CREATE INDEX IF NOT EXISTS idx_links_to ON bug_links(to_id);
 `;

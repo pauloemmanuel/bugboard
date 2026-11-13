@@ -2,7 +2,12 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const DATA_DIR = join(homedir(), ".bugboard");
+export const DATA_DIR = process.env.BUGBOARD_DATA_DIR || join(homedir(), ".bugboard");
+export const GRAPH_PATH = join(DATA_DIR, "graph.json");
+
+export function codeRoot(): string {
+  return process.env.BUGBOARD_CODE_ROOT || join(homedir(), "Projetos", "GroupLookstar");
+}
 export const DB_PATH = join(DATA_DIR, "data.sqlite");
 export const PID_PATH = join(DATA_DIR, "server.pid");
 export const LOG_PATH = join(DATA_DIR, "server.log");

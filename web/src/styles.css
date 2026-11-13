@@ -691,3 +691,19 @@ input[type="text"] {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+.code-chips .repo-chip {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 500;
+  word-break: break-all;
+}
+
+.related-chip {
+  display: inline-block;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.card.flash {
+  outline: 2px solid var(--bb-text);
+}
