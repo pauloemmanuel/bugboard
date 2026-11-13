@@ -1,4 +1,5 @@
 import type { Bug } from "./api";
+import { attachmentLines, type AttachmentRef } from "./imageTokens";
 
 function shortLine(s: string, max = 120): string {
   const t = s.trim();
@@ -6,12 +7,13 @@ function shortLine(s: string, max = 120): string {
   return `${t.slice(0, max - 1)}…`;
 }
 
-export function buildFailAiPrompt(sheetName: string, bug: Bug, motivo: string): string {
+export function buildFailAiPrompt(sheetName: string, bug: Bug, motivo: string, atts: AttachmentRef[] = []): string {
   const lines: string[] = [
     `Bugboard · aba "${sheetName}" · #${bug.n} ${bug.title}`,
     "Status: falhou",
     `Motivo: ${motivo.trim()}`,
   ];
+  lines.push(...attachmentLines(motivo, atts));
   if (bug.repos.length > 0) {
     lines.push(`Repos: ${bug.repos.join(", ")}`);
   }

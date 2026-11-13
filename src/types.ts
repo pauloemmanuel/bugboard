@@ -51,6 +51,7 @@ export interface Bug {
   files: string[];
   symbols: string[];
   links?: BugLinkView[];
+  attachments?: Attachment[];
   children?: Bug[];
   created_at: string;
   updated_at: string;
@@ -87,4 +88,12 @@ export interface BugLinkView {
   status: BugStatus;
   type: LinkType;
   direction: "out" | "in";
+}
+
+export interface Attachment {
+  n: number;
+  /** Absolute path on disk, readable by agents. */
+  path: string;
+  round: number;
+  created_at: string;
 }

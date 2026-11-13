@@ -41,4 +41,13 @@ CREATE TABLE IF NOT EXISTS bug_links (
   PRIMARY KEY (from_id, to_id, type)
 );
 CREATE INDEX IF NOT EXISTS idx_links_to ON bug_links(to_id);
+
+CREATE TABLE IF NOT EXISTS bug_attachments (
+  bug_id TEXT NOT NULL REFERENCES bugs(id) ON DELETE CASCADE,
+  n INTEGER NOT NULL,
+  path TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  round INTEGER NOT NULL DEFAULT 1,
+  PRIMARY KEY (bug_id, n)
+);
 `;

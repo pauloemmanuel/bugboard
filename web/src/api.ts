@@ -17,6 +17,12 @@ export interface BugLinkView {
   direction: "out" | "in";
 }
 
+export interface Attachment {
+  n: number;
+  path: string;
+  round: number;
+}
+
 export interface Bug {
   id: string;
   sheet_id: string;
@@ -36,6 +42,7 @@ export interface Bug {
   files?: string[];
   symbols?: string[];
   links?: BugLinkView[];
+  attachments?: Attachment[];
   updated_at?: string;
   children?: Bug[];
 }
@@ -131,4 +138,22 @@ export async function failBug(id: string, note?: string): Promise<Bug> {
     }),
   );
   return data.bug;
+}
+
+export const attachmentUrl = (bugId: string, n: number) => `/api/bugs/${bugId}/attachments/${n}`;
+
+export async function uploadAttachment(bugId: string, file: Blob): Promise<Attachment> {
+  const data = await json<{ attachment: Attachment }>(
+    await fetch(`/api/bugs/${bugId}/attachments`, {
+      ...FETCH_INIT,
+      method: "POST",
+      headers: { "Content-Type": file.type },
+      body: file,
+    }),
+  );
+  return data.attachment;
+}
+
+export async function deleteAttachment(bugId: string, n: number): Promise<void> {
+  await fetch(`/api/bugs/${bugId}/attachments/${n}`, { ...FETCH_INIT, method: "DELETE" });
 }

@@ -1,10 +1,12 @@
 import Database from "better-sqlite3";
 import { randomUUID } from "node:crypto";
-import { mkdirSync } from "node:fs";
-import { DB_PATH } from "./paths.js";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { DB_PATH, DATA_DIR } from "./paths.js";
 import { SCHEMA_SQL } from "./schema.js";
 import { LINK_TYPES } from "./types.js";
 import type {
+  Attachment,
   BoardStats,
   Bug,
   BugKind,
@@ -241,7 +243,11 @@ function bugMatchesFilter(bug: Bug, status?: BugStatus): boolean {
 
 export function listBugsFlat(sheetId: string, status?: BugStatus): Bug[] {
   const db = getDb();
-  return fetchBugRows(db, sheetId, status).map(rowToBug);
+  return fetchBugRows(db, sheetId, status).map((r) => {
+    const b = rowToBug(r);
+    b.attachments = listAttachments(b.id);
+    return b;
+  });
 }
 
 export function listBugs(sheetId: string, status?: BugStatus): Bug[] {
@@ -255,7 +261,10 @@ export function listBugsNested(sheetId: string, status?: BugStatus): Bug[] {
   const rows = fetchBugRows(db, sheetId);
   const flat = rows.map(rowToBug);
   const lv = linkViews(db, flat.map((b) => b.id));
-  for (const b of flat) b.links = lv.get(b.id) ?? [];
+  for (const b of flat) {
+    b.links = lv.get(b.id) ?? [];
+    b.attachments = listAttachments(b.id);
+  }
   const byParent = new Map<string | null, Bug[]>();
   for (const b of flat) {
     const key = b.parent_id;
@@ -299,6 +308,7 @@ export function getBug(id: string): Bug | null {
   if (!row) return null;
   const bug = rowToBug(row);
   bug.links = linkViews(db, [id]).get(id) ?? [];
+  bug.attachments = listAttachments(id);
   return bug;
 }
 
@@ -584,4 +594,65 @@ export function boardStats(sheetId?: string): BoardStats {
     ok: row.ok ?? 0,
     falhou: row.falhou ?? 0,
   };
+}
+
+
+// ---- attachments -----------------------------------------------------------
+
+export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+const MIME_EXT: Record<string, string> = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/webp": "webp",
+};
+
+/** Returns the file extension for an allowed image, or an error string. */
+export function validateImageUpload(mime: string, size: number): { ext: string } | { error: string } {
+  const ext = MIME_EXT[mime.split(";")[0].trim().toLowerCase()];
+  if (!ext) return { error: "only png, jpg and webp" };
+  if (size <= 0) return { error: "empty file" };
+  if (size > MAX_UPLOAD_BYTES) return { error: "file too large (max 10 MB)" };
+  return { ext };
+}
+
+export function listAttachments(bugId: string): Attachment[] {
+  return getDb()
+    .prepare("SELECT n, path, round, created_at FROM bug_attachments WHERE bug_id = ? ORDER BY n")
+    .all(bugId) as Attachment[];
+}
+
+export function addAttachment(bugId: string, data: Buffer, mime: string): Attachment | string {
+  const db = getDb();
+  const bug = db.prepare("SELECT round FROM bugs WHERE id = ?").get(bugId) as
+    | { round: number }
+    | undefined;
+  if (!bug) return "not found";
+  const v = validateImageUpload(mime, data.length);
+  if ("error" in v) return v.error;
+  const row = db.prepare("SELECT MAX(n) AS m FROM bug_attachments WHERE bug_id = ?").get(bugId) as {
+    m: number | null;
+  };
+  const n = (row.m ?? 0) + 1;
+  const dir = join(DATA_DIR, "uploads", bugId);
+  mkdirSync(dir, { recursive: true });
+  const path = join(dir, `${n}.${v.ext}`);
+  writeFileSync(path, data);
+  const t = nowIso();
+  db.prepare(
+    "INSERT INTO bug_attachments (bug_id, n, path, created_at, round) VALUES (?, ?, ?, ?, ?)",
+  ).run(bugId, n, path, t, bug.round);
+  bumpWrite();
+  return { n, path, round: bug.round, created_at: t };
+}
+
+export function removeAttachment(bugId: string, n: number): boolean {
+  const db = getDb();
+  const row = db
+    .prepare("SELECT path FROM bug_attachments WHERE bug_id = ? AND n = ?")
+    .get(bugId, n) as { path: string } | undefined;
+  if (!row) return false;
+  db.prepare("DELETE FROM bug_attachments WHERE bug_id = ? AND n = ?").run(bugId, n);
+  rmSync(row.path, { force: true });
+  bumpWrite();
+  return true;
 }

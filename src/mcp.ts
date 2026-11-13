@@ -34,7 +34,8 @@ function plain(text: string, isError = false) {
 function compactLine(b: Bug): string {
   const code = b.files.length || b.symbols.length ? ` files=${b.files.length} sym=${b.symbols.length}` : "";
   const parent = b.parent_id ? ` parent=${b.parent_id.slice(0, 8)}` : "";
-  return `#${b.n} [${b.status}] ${b.kind} ${b.title} (id=${b.id.slice(0, 8)}${parent}${code})`;
+  const att = (b.attachments ?? []).map((a) => `\n    [Imagem #${a.n}]: ${a.path}`).join("");
+  return `#${b.n} [${b.status}] ${b.kind} ${b.title} (id=${b.id.slice(0, 8)}${parent}${code})${att}`;
 }
 
 function textContent(data: unknown) {

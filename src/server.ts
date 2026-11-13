@@ -2,7 +2,11 @@ import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { readFileSync } from "node:fs";
 import {
+  addAttachment,
+  listAttachments,
+  removeAttachment,
   boardStats,
   createBug,
   createSheet,
@@ -110,6 +114,26 @@ export function createApp(): Hono {
     const bug = failBug(id, body.note);
     if (!bug) return c.json({ error: "not found" }, 404);
     return c.json({ bug });
+  });
+
+  app.post("/api/bugs/:id/attachments", async (c) => {
+    const buf = Buffer.from(await c.req.arrayBuffer());
+    const r = addAttachment(c.req.param("id"), buf, c.req.header("content-type") ?? "");
+    if (typeof r === "string") return c.json({ error: r }, r === "not found" ? 404 : 400);
+    return c.json({ attachment: r }, 201);
+  });
+
+  app.get("/api/bugs/:id/attachments/:n", (c) => {
+    const a = listAttachments(c.req.param("id")).find((x) => x.n === Number(c.req.param("n")));
+    if (!a) return c.json({ error: "not found" }, 404);
+    const ext = a.path.split(".").pop();
+    const type = ext === "jpg" ? "image/jpeg" : `image/${ext}`;
+    return new Response(readFileSync(a.path), { headers: { "Content-Type": type } });
+  });
+
+  app.delete("/api/bugs/:id/attachments/:n", (c) => {
+    const ok = removeAttachment(c.req.param("id"), Number(c.req.param("n")));
+    return ok ? c.json({ ok: true }) : c.json({ error: "not found" }, 404);
   });
 
   app.get("/api/stats", (c) => {

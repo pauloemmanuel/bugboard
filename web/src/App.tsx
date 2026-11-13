@@ -12,6 +12,8 @@ import {
   patchBug,
 } from "./api";
 import { PlatformIcon } from "./PlatformIcon";
+import { attachmentUrl, deleteAttachment, uploadAttachment } from "./api";
+import { insertToken, removeToken, type AttachmentRef } from "./imageTokens";
 import { PrepList } from "./PrepList";
 import { extractAmbienteFromPrep, prepLinesForDisplay } from "./prepLine";
 import { FailAiPromptDialog } from "./FailAiPromptDialog";
@@ -356,20 +358,57 @@ function FailMotivoDialog({
 }: {
   bug: Bug | null;
   busy: boolean;
-  onConfirm: (motivo: string) => void;
+  onConfirm: (motivo: string, atts: AttachmentRef[]) => void;
   onCancel: () => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const [motivo, setMotivo] = useState("");
+  const [atts, setAtts] = useState<AttachmentRef[]>([]);
+  const [zoom, setZoom] = useState<AttachmentRef | null>(null);
+  const [upError, setUpError] = useState<string | null>(null);
+  const taRef = useRef<HTMLTextAreaElement>(null);
   const trimOk = motivo.trim().length > 0;
 
   useEffect(() => {
-    if (!bug) {
-      setMotivo("");
-      return;
-    }
     setMotivo("");
+    setAtts([]);
+    setZoom(null);
+    setUpError(null);
   }, [bug?.id]);
+
+  async function addFiles(files: File[]) {
+    if (!bug) return;
+    setUpError(null);
+    for (const f of files) {
+      try {
+        const a = await uploadAttachment(bug.id, f);
+        const pos = taRef.current?.selectionStart ?? motivo.length;
+        setAtts((prev) => [...prev, a]);
+        setMotivo((prev) => {
+          const r = insertToken(prev, pos, a.n);
+          requestAnimationFrame(() => taRef.current?.setSelectionRange(r.cursor, r.cursor));
+          return r.text;
+        });
+      } catch {
+        setUpError("Imagem não enviada (png, jpg, webp até 10 MB)");
+      }
+    }
+  }
+
+  function imagesOf(list: DataTransfer | null): File[] {
+    return Array.from(list?.files ?? []).filter((f) => f.type.startsWith("image/"));
+  }
+
+  function removeAtt(a: AttachmentRef) {
+    if (bug) void deleteAttachment(bug.id, a.n);
+    setAtts((prev) => prev.filter((x) => x.n !== a.n));
+    setMotivo((prev) => removeToken(prev, a.n));
+  }
+
+  function cancel() {
+    if (bug) for (const a of atts) void deleteAttachment(bug.id, a.n);
+    onCancel();
+  }
 
   useEffect(() => {
     const el = ref.current;
@@ -385,7 +424,7 @@ function FailMotivoDialog({
       aria-labelledby="fail-motivo-title"
       onCancel={(e) => {
         e.preventDefault();
-        if (!busy) onCancel();
+        if (!busy) cancel();
       }}
     >
       <h2 id="fail-motivo-title">Por que falhou?</h2>
@@ -396,22 +435,57 @@ function FailMotivoDialog({
         <span className="section-label">Motivo</span>
         <textarea
           value={motivo}
+          ref={taRef}
           onChange={(e) => setMotivo(e.target.value)}
+          onPaste={(e) => {
+            const imgs = imagesOf(e.clipboardData);
+            if (imgs.length) {
+              e.preventDefault();
+              void addFiles(imgs);
+            }
+          }}
+          onDrop={(e) => {
+            const imgs = imagesOf(e.dataTransfer);
+            if (imgs.length) {
+              e.preventDefault();
+              void addFiles(imgs);
+            }
+          }}
           rows={4}
           placeholder="O que deu errado no teste"
           disabled={busy}
           autoFocus
         />
       </label>
+      {upError && <p className="muted-hint">{upError}</p>}
+      {bug && atts.length > 0 && (
+        <ul className="att-thumbs">
+          {atts.map((a) => (
+            <li key={a.n} className="att-thumb">
+              <button type="button" className="att-img" onClick={() => setZoom(a)} title={`Imagem #${a.n}`}>
+                <img src={attachmentUrl(bug.id, a.n)} alt={`Imagem #${a.n}`} />
+              </button>
+              <button type="button" className="att-x" aria-label={`Remover imagem ${a.n}`} onClick={() => removeAtt(a)}>
+                x
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {bug && zoom && (
+        <div className="att-zoom" onClick={() => setZoom(null)}>
+          <img src={attachmentUrl(bug.id, zoom.n)} alt={`Imagem #${zoom.n}`} />
+        </div>
+      )}
       <div className="inline-form">
-        <button type="button" className="btn" onClick={onCancel} disabled={busy}>
+        <button type="button" className="btn" onClick={cancel} disabled={busy}>
           Cancelar
         </button>
         <button
           type="button"
           className="btn danger"
           disabled={busy || !trimOk}
-          onClick={() => onConfirm(motivo.trim())}
+          onClick={() => onConfirm(motivo.trim(), atts)}
         >
           Marcar como falhou
         </button>
@@ -479,7 +553,7 @@ export function App() {
   const [sheetToArchive, setSheetToArchive] = useState<Sheet | null>(null);
   const [archiving, setArchiving] = useState(false);
   const [failPromptBug, setFailPromptBug] = useState<Bug | null>(null);
-  const [failAiFollowUp, setFailAiFollowUp] = useState<{ bug: Bug; motivo: string } | null>(
+  const [failAiFollowUp, setFailAiFollowUp] = useState<{ bug: Bug; motivo: string; atts: AttachmentRef[] } | null>(
     null,
   );
   const [failing, setFailing] = useState(false);
@@ -687,7 +761,7 @@ export function App() {
     onFailClick: (bug: Bug) => {
       setFailPromptBug(bug);
     },
-    onFailConfirm: async (bug: Bug, motivo: string) => {
+    onFailConfirm: async (bug: Bug, motivo: string, atts: AttachmentRef[]) => {
       bugsSnapshot.current = bugs;
       markScrollPreserve();
       setFailing(true);
@@ -699,7 +773,7 @@ export function App() {
         setBugs((prev) => mergeBugIntoTree(prev, updated));
         await refreshStats(activeSheetId);
         setFailPromptBug(null);
-        setFailAiFollowUp({ bug: updated, motivo });
+        setFailAiFollowUp({ bug: updated, motivo, atts });
       } catch {
         setBugs(bugsSnapshot.current ?? bugs);
         setError("Não foi possível marcar como falhou.");
@@ -835,8 +909,8 @@ export function App() {
       <FailMotivoDialog
         bug={failPromptBug}
         busy={failing}
-        onConfirm={(motivo) => {
-          if (failPromptBug) void handlers.onFailConfirm(failPromptBug, motivo);
+        onConfirm={(motivo, atts) => {
+          if (failPromptBug) void handlers.onFailConfirm(failPromptBug, motivo, atts);
         }}
         onCancel={() => {
           if (!failing) setFailPromptBug(null);
@@ -852,6 +926,7 @@ export function App() {
         sheetName={activeSheetName}
         bug={failAiFollowUp?.bug ?? null}
         motivo={failAiFollowUp?.motivo ?? ""}
+        atts={failAiFollowUp?.atts ?? []}
         onClose={() => setFailAiFollowUp(null)}
       />
     </>

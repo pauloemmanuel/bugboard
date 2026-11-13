@@ -2,16 +2,19 @@ import { Check, Copy } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { Bug } from "./api";
 import { buildFailAiPrompt } from "./failAiPrompt";
+import type { AttachmentRef } from "./imageTokens";
 
 export function FailAiPromptDialog({
   sheetName,
   bug,
   motivo,
+  atts,
   onClose,
 }: {
   sheetName: string;
   bug: Bug | null;
   motivo: string;
+  atts: AttachmentRef[];
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -19,7 +22,7 @@ export function FailAiPromptDialog({
   const resetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const prompt =
-    bug && motivo ? buildFailAiPrompt(sheetName, bug, motivo) : "";
+    bug && motivo ? buildFailAiPrompt(sheetName, bug, motivo, atts) : "";
 
   useEffect(() => {
     return () => {
