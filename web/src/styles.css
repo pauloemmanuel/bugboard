@@ -707,3 +707,28 @@ input[type="text"] {
 .card.flash {
   outline: 2px solid var(--bb-text);
 }
+
+.prep-chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.copy-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 650;
+  padding: 3px 9px;
+  border: 1px solid var(--bb-border);
+  background: var(--bb-chip-bg);
+  color: var(--bb-text);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.copy-chip.copied {
+  border-color: var(--bb-text);
+}

@@ -52,3 +52,28 @@ export function CopyButton({
     </button>
   );
 }
+
+export function CopyChip({ text, label }: { text: string; label: string }) {
+  const [copied, setCopied] = useState(false);
+  async function onCopy() {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1400);
+    } catch {
+      setCopied(false);
+    }
+  }
+  return (
+    <button
+      type="button"
+      className={`copy-chip${copied ? " copied" : ""}`}
+      onClick={() => void onCopy()}
+      title={text}
+      aria-label={`Copiar ${label}`}
+    >
+      {copied ? <Check size={13} strokeWidth={2.5} aria-hidden /> : <Copy size={13} strokeWidth={2.5} aria-hidden />}
+      <span>{label}</span>
+    </button>
+  );
+}
