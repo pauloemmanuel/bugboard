@@ -102,13 +102,13 @@ function CardActions({
   onReady,
   onReopen,
   onPass,
-  onFail,
+  onFailClick,
 }: {
   bug: Bug;
   onReady: () => void;
   onReopen: () => void;
   onPass: () => void;
-  onFail: () => void;
+  onFailClick: () => void;
 }) {
   return (
     <div className="actions">
@@ -117,7 +117,7 @@ function CardActions({
           <button type="button" className="btn primary" onClick={onPass}>
             Passou
           </button>
-          <button type="button" className="btn danger" onClick={onFail}>
+          <button type="button" className="btn danger" onClick={onFailClick}>
             Falhou
           </button>
         </>
@@ -193,8 +193,12 @@ function BugCardBody({ bug }: { bug: Bug }) {
         </div>
       )}
       {bug.note && (
-        <div className="card-section">
-          <div className="section-label">Nota</div>
+        <div
+          className={`card-section${bug.status === "falhou" ? " fail-reason" : ""}`}
+        >
+          <div className="section-label">
+            {bug.status === "falhou" ? "Por que falhou" : "Nota"}
+          </div>
           <SectionText text={bug.note} />
         </div>
       )}
@@ -233,7 +237,7 @@ function UseCaseCard({
         onReady={() => handlers.onReady(bug)}
         onReopen={() => handlers.onReopen(bug)}
         onPass={() => handlers.onPass(bug)}
-        onFail={() => handlers.onFail(bug)}
+        onFailClick={() => handlers.onFailClick(bug)}
       />
     </article>
   );
@@ -278,7 +282,7 @@ function JourneyCard({
         onReady={() => handlers.onReady(bug)}
         onReopen={() => handlers.onReopen(bug)}
         onPass={() => handlers.onPass(bug)}
-        onFail={() => handlers.onFail(bug)}
+        onFailClick={() => handlers.onFailClick(bug)}
       />
       {children.length > 0 && (
         <div className="child-stack">
@@ -292,6 +296,78 @@ function JourneyCard({
         </div>
       )}
     </article>
+  );
+}
+
+function FailMotivoDialog({
+  bug,
+  busy,
+  onConfirm,
+  onCancel,
+}: {
+  bug: Bug | null;
+  busy: boolean;
+  onConfirm: (motivo: string) => void;
+  onCancel: () => void;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const [motivo, setMotivo] = useState("");
+  const trimOk = motivo.trim().length > 0;
+
+  useEffect(() => {
+    if (!bug) {
+      setMotivo("");
+      return;
+    }
+    setMotivo("");
+  }, [bug?.id]);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (bug && !el.open) el.showModal();
+    if (!bug && el.open) el.close();
+  }, [bug]);
+
+  return (
+    <dialog
+      ref={ref}
+      className="confirm-dialog fail-motivo-dialog"
+      aria-labelledby="fail-motivo-title"
+      onCancel={(e) => {
+        e.preventDefault();
+        if (!busy) onCancel();
+      }}
+    >
+      <h2 id="fail-motivo-title">Por que falhou?</h2>
+      <p>
+        Card <strong>#{bug?.n}</strong>. O motivo fica salvo no card e o bot lê via MCP.
+      </p>
+      <label className="fail-motivo-field">
+        <span className="section-label">Motivo</span>
+        <textarea
+          value={motivo}
+          onChange={(e) => setMotivo(e.target.value)}
+          rows={4}
+          placeholder="O que deu errado no teste"
+          disabled={busy}
+          autoFocus
+        />
+      </label>
+      <div className="inline-form">
+        <button type="button" className="btn" onClick={onCancel} disabled={busy}>
+          Cancelar
+        </button>
+        <button
+          type="button"
+          className="btn danger"
+          disabled={busy || !trimOk}
+          onClick={() => onConfirm(motivo.trim())}
+        >
+          Marcar como falhou
+        </button>
+      </div>
+    </dialog>
   );
 }
 
@@ -353,6 +429,8 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [sheetToArchive, setSheetToArchive] = useState<Sheet | null>(null);
   const [archiving, setArchiving] = useState(false);
+  const [failPromptBug, setFailPromptBug] = useState<Bug | null>(null);
+  const [failing, setFailing] = useState(false);
   const activeRef = useRef<string | null>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
   const pendingTabFocus = useRef(false);
@@ -552,18 +630,26 @@ export function App() {
         bugsSnapshot.current = null;
       }
     },
-    onFail: async (bug: Bug) => {
+    onFailClick: (bug: Bug) => {
+      setFailPromptBug(bug);
+    },
+    onFailConfirm: async (bug: Bug, motivo: string) => {
       bugsSnapshot.current = bugs;
       markScrollPreserve();
-      setBugs((prev) => patchBugInTree(prev, bug.id, { status: "falhou" }));
+      setFailing(true);
+      setBugs((prev) =>
+        patchBugInTree(prev, bug.id, { status: "falhou", note: motivo }),
+      );
       try {
-        const updated = await failBug(bug.id);
+        const updated = await failBug(bug.id, motivo);
         setBugs((prev) => mergeBugIntoTree(prev, updated));
         await refreshStats(activeSheetId);
+        setFailPromptBug(null);
       } catch {
         setBugs(bugsSnapshot.current ?? bugs);
         setError("Não foi possível marcar como falhou.");
       } finally {
+        setFailing(false);
         bugsSnapshot.current = null;
       }
     },
@@ -691,6 +777,16 @@ export function App() {
           </div>
         )}
       </main>
+      <FailMotivoDialog
+        bug={failPromptBug}
+        busy={failing}
+        onConfirm={(motivo) => {
+          if (failPromptBug) void handlers.onFailConfirm(failPromptBug, motivo);
+        }}
+        onCancel={() => {
+          if (!failing) setFailPromptBug(null);
+        }}
+      />
       <ArchiveSheetDialog
         sheet={sheetToArchive}
         busy={archiving}

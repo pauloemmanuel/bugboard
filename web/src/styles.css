@@ -614,6 +614,45 @@ input[type="text"] {
   margin: 0 0 18px;
 }
 
+.fail-motivo-dialog {
+  max-width: 480px;
+}
+
+.fail-motivo-field {
+  display: block;
+  margin: 0 0 18px;
+}
+
+.fail-motivo-field textarea {
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--bb-border-strong);
+  border-radius: var(--bb-radius-sm);
+  background: var(--bb-bg);
+  color: var(--bb-text-strong);
+  font: inherit;
+  resize: vertical;
+  min-height: 88px;
+}
+
+.fail-motivo-field textarea:focus {
+  outline: 2px solid var(--bb-accent);
+  outline-offset: 1px;
+}
+
+.card-section.fail-reason {
+  border: 1px solid color-mix(in srgb, var(--bb-danger) 55%, var(--bb-border-strong));
+  background: color-mix(in srgb, var(--bb-danger) 8%, var(--bb-surface));
+  border-radius: var(--bb-radius-sm);
+  padding: 12px 14px;
+}
+
+.card-section.fail-reason .section-label {
+  color: var(--bb-danger);
+  font-weight: 700;
+}
+
 .btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;

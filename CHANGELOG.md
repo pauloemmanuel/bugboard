@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.6] - 2026-11-12
+
+### Added
+
+- Web UI: **Falhou** opens a required motivo prompt; saves to `note` via `failBug(id, note)`
+- Failed cards show **Por que falhou** with a highlighted reason block (poll and optimistic update keep it in sync)
+
 ## [0.3.5] - 2026-11-12
 
 ### Changed
