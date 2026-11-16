@@ -4,11 +4,35 @@
 [![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen)](package.json)
 [![M8ven Score](https://m8ven.ai/badge/mcp/pauloemmanuel/bugboard)](https://m8ven.ai/mcp/pauloemmanuel/bugboard?s=readme)
 
-Bugboard is a **local bug board** with Excel-like **sheet tabs**. Any AI coding agent that speaks MCP can create and update cards; humans mark **Pass** or **Fail** in the browser. Run it on your machine, or bind the HTTP server to your LAN if you want a small team to share one board.
+**QA points out the bug, the dev fixes it right there, QA signs it off. One board, no ticket ping-pong.**
 
-*PT: quadro local de bugs com abas tipo planilha; agentes MCP criam cards, humanos validam no navegador.*
+Bugboard is a **local bug board** with Excel-like **sheet tabs**, built for teams that code with AI agents. QA files a defect as a card. The developer's AI agent reads that card over **MCP**, fixes the code, and moves it to test. QA clicks **Pass** or **Fail** in the browser. Nothing gets copied between Jira, spreadsheets and chat.
 
-The UI is a flat, high-contrast board: sheet tabs across the top, status filters, and cards with numbered steps, repo chips, and Pass/Fail actions when a card is ready to test.
+*PT: o QA aponta o defeito, o dev já desenvolve direto no card pelo agente de IA (MCP), e o QA valida no navegador com Passou / Falhou.*
+
+## How it works
+
+```mermaid
+flowchart LR
+    QA["QA files the bug<br/>(steps, where, test data)"] --> DEV["Dev's AI agent picks the card<br/>over MCP and fixes it"]
+    DEV --> TEST["Card moves to <b>testar</b>"]
+    TEST --> CHECK{"QA checks<br/>in the browser"}
+    CHECK -- Passou --> OK["<b>ok</b> ✅"]
+    CHECK -- Falhou --> BACK["<b>falhou</b> + reason<br/>(screenshots, AI prompt)"]
+    BACK --> DEV
+```
+
+1. **QA points out the defect.** One card per bug, with numbered repro steps, the environment (`where`), and the test data (`prep`).
+2. **The dev fixes it from the card.** The AI agent (Claude Code, Cursor or any MCP client) reads the card, changes the code, records `fix`, `files` and `symbols`, and sets the card to `testar`.
+3. **QA validates.** **Passou** closes it as `ok`. **Falhou** asks for a reason (you can paste screenshots), offers a ready-made prompt to hand back to the AI, and the card returns to the dev with its `round` counter increased.
+
+## Why Bugboard
+
+- **The bug and the fix live on the same card.** Agents read and write it directly, so nobody re-types the bug report into a prompt.
+- **Humans stay in charge of quality.** Agents can mark work as ready, but only a person clicks Pass or Fail.
+- **Local first.** Data stays in SQLite on your machine. Bind the server to your LAN if a small team wants to share one board.
+- **Spreadsheet feel.** Sheet tabs per project, release or device, plus status filters, repo chips and numbered steps.
+- **Code aware.** Cards link to files and symbols, so you can ask which bugs touch the same code (see [Knowledge graph](#knowledge-graph)).
 
 ## Quick start
 
@@ -35,18 +59,13 @@ CLI: `serve` | `open` | `status` | `mcp`.
 
 All board data lives in **`~/.bugboard/`** (SQLite). Cloning this repo does **not** copy anyone's sheets or cards. Each machine has its own database.
 
-## Sheets workflow
+## Sheets
 
-1. Create **sheets** (tabs) for a project, release, or device matrix.
-2. Agents add **bug cards** to a sheet via MCP or the HTTP API.
-3. Developers move cards to `testar` when a fix is ready.
-4. Testers use **Passou** / **Falhou** in the UI (`ok` / `falhou`).
-
-Archived sheets are hidden from the default list (MCP: `sheet_archive`).
+Create **sheets** (tabs) for a project, a release or a device matrix, then add cards through MCP or the HTTP API. Archived sheets are hidden from the default list (MCP: `sheet_archive`).
 
 ## Journeys and use cases
 
-**Journey** cards (`kind: journey`, `parent_id` null) group a device or platform run (e.g. iOS Wellmexh 80/20). **Use case** cards (`kind: usecase`, `parent_id` set) are atomic flows inside that journey (signup, chat, wallet). Each use case has its own status, steps, and pass/fail; one failure does not block the whole journey. Journey cards show child progress (`3/7 ok`) from use case statuses; marking a journey **Passou** does not auto-pass children.
+**Journey** cards (`kind: journey`, `parent_id` null) group a device or platform run (e.g. iOS release 2.3). **Use case** cards (`kind: usecase`, `parent_id` set) are atomic flows inside that journey (signup, chat, wallet). Each use case has its own status, steps, and pass/fail; one failure does not block the whole journey. Journey cards show child progress (`3/7 ok`) from use case statuses; marking a journey **Passou** does not auto-pass children.
 
 `prep` is a string array of test data the agent should fill (emails, MFA codes, package names, URLs). The UI shows **Preparação** on use cases.
 
@@ -118,7 +137,13 @@ Restart Cursor after changes.
 
 ### Claude Code
 
-Add the same block under `mcpServers` in `~/.claude.json` (or your Claude Code MCP config). Restart the CLI session.
+One command:
+
+```bash
+claude mcp add bugboard -- node /absolute/path/to/bugboard/dist/index.js mcp
+```
+
+Or add the same block under `mcpServers` in `~/.claude.json` (or your Claude Code MCP config) and restart the CLI session.
 
 See also [`.mcp.json`](./.mcp.json) in this repo for a working absolute-path example.
 

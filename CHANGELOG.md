@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- README: "How it works" flow (QA files, dev's agent fixes over MCP, QA validates), "Why Bugboard" section, one-line Claude Code setup, M8ven Score badge
+
 ## [0.4.0] - 2026-11-13
 
 ### Added
