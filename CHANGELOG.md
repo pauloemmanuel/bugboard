@@ -10,20 +10,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `cancelado` status for cards that no longer make sense (the screen changed, the button is gone, or the AI got the scenario wrong): **Cancelar card** button with quick reasons in the web UI, `bug_cancel` MCP tool, `POST /api/bugs/:id/cancel`, and a `cancelado` count in stats
-- Language selector in the header with the 10 most spoken languages (English, 中文, हिन्दी, Español, Français, العربية, বাংলা, Português, Русский, اردو). English is the default, the choice is remembered per browser, and Arabic and Urdu switch the page to right to left
 - Cancelled cards are hidden from **Todos**, listed under the **Cancelado** filter, left out of journey progress (`3/7 ok`), and can be reopened
+- Language selector in the header with the 10 most spoken languages (English, 中文, हिन्दी, Español, Français, العربية, বাংলা, Português, Русский, اردو). English is the default, the choice is remembered per browser, and Arabic and Urdu switch the page to right to left
 
 ### Changed
 
 - The "copy prompt for AI" text after a failure is now always English and shorter: card id for `bug_get`, numbered steps, and one closing task line
+- README: "How it works" flow (QA files, dev's agent fixes over MCP, QA validates), "Why Bugboard" section, one-line Claude Code setup, M8ven Score badge
 
 ### Fixed
 
 - Web card handler types (`onFailClick`) and the status filter type predicate now type-check under strict mode
-
-### Changed
-
-- README: "How it works" flow (QA files, dev's agent fixes over MCP, QA validates), "Why Bugboard" section, one-line Claude Code setup, M8ven Score badge
 
 ## [0.4.0] - 2026-11-13
 
