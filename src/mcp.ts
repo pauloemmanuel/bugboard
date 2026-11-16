@@ -9,6 +9,7 @@ import {
   createBug,
   createSheet,
   failBug,
+  cancelBug,
   getBug,
   getDb,
   linkBugs,
@@ -108,7 +109,7 @@ export async function runMcpServer(): Promise<void> {
           type: "object",
           properties: {
             sheet_id: { type: "string" },
-            status: { type: "string", enum: ["fazendo", "testar", "ok", "falhou"] },
+            status: { type: "string", enum: ["fazendo", "testar", "ok", "falhou", "cancelado"] },
             compact: { type: "boolean", description: "One line per card, no prep/steps" },
           },
           required: ["sheet_id"],
@@ -134,7 +135,7 @@ export async function runMcpServer(): Promise<void> {
             sheet_id: { type: "string" },
             title: { type: "string" },
             repos: { type: "array", items: { type: "string" } },
-            status: { type: "string", enum: ["fazendo", "testar", "ok", "falhou"] },
+            status: { type: "string", enum: ["fazendo", "testar", "ok", "falhou", "cancelado"] },
             where: { type: "string" },
             steps: { type: "array", items: { type: "string" } },
             fix: { type: "string" },
@@ -161,7 +162,7 @@ export async function runMcpServer(): Promise<void> {
             id: { type: "string" },
             title: { type: "string" },
             repos: { type: "array", items: { type: "string" } },
-            status: { type: "string", enum: ["fazendo", "testar", "ok", "falhou"] },
+            status: { type: "string", enum: ["fazendo", "testar", "ok", "falhou", "cancelado"] },
             where: { type: "string" },
             steps: { type: "array", items: { type: "string" } },
             fix: { type: "string" },
@@ -266,6 +267,17 @@ export async function runMcpServer(): Promise<void> {
       {
         name: "bug_fail",
         description: "Mark bug as falhou (human validation)",
+        inputSchema: {
+          type: "object",
+          properties: { id: { type: "string" }, note: { type: "string" } },
+          required: ["id"],
+          additionalProperties: false,
+        },
+      },
+      {
+        name: "bug_cancel",
+        description:
+          "Mark bug as cancelado: the card no longer makes sense (the screen changed, the button is gone, or the scenario was wrong). Put the reason in note. Reopen with bug_update status fazendo.",
         inputSchema: {
           type: "object",
           properties: { id: { type: "string" }, note: { type: "string" } },
@@ -402,6 +414,11 @@ export async function runMcpServer(): Promise<void> {
       }
       case "bug_fail": {
         const bug = failBug(String(a.id), a.note as string | undefined);
+        if (!bug) return { content: [{ type: "text", text: "not found" }], isError: true };
+        return textContent({ bug });
+      }
+      case "bug_cancel": {
+        const bug = cancelBug(String(a.id), a.note as string | undefined);
         if (!bug) return { content: [{ type: "text", text: "not found" }], isError: true };
         return textContent({ bug });
       }

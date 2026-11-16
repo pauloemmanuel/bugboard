@@ -570,6 +570,21 @@ export function failBug(id: string, note?: string): Bug | null {
   return getBug(id);
 }
 
+/** Card no longer makes sense (screen changed, AI got the scenario wrong). Reopen with status fazendo. */
+export function cancelBug(id: string, note?: string): Bug | null {
+  const db = getDb();
+  const existing = db.prepare("SELECT * FROM bugs WHERE id = ?").get(id) as BugRow | undefined;
+  if (!existing) return null;
+  const nextNote = note !== undefined ? note : existing.note;
+  db.prepare("UPDATE bugs SET status = 'cancelado', note = ?, updated_at = ? WHERE id = ?").run(
+    nextNote,
+    nowIso(),
+    id,
+  );
+  bumpWrite();
+  return getBug(id);
+}
+
 export function boardStats(sheetId?: string): BoardStats {
   const db = getDb();
   const base = sheetId
@@ -583,7 +598,8 @@ export function boardStats(sheetId?: string): BoardStats {
         SUM(CASE WHEN status = 'fazendo' THEN 1 ELSE 0 END) AS fazendo,
         SUM(CASE WHEN status = 'testar' THEN 1 ELSE 0 END) AS testar,
         SUM(CASE WHEN status = 'ok' THEN 1 ELSE 0 END) AS ok,
-        SUM(CASE WHEN status = 'falhou' THEN 1 ELSE 0 END) AS falhou
+        SUM(CASE WHEN status = 'falhou' THEN 1 ELSE 0 END) AS falhou,
+        SUM(CASE WHEN status = 'cancelado' THEN 1 ELSE 0 END) AS cancelado
       ${base}`,
     )
     .get(params) as BoardStats;
@@ -593,6 +609,7 @@ export function boardStats(sheetId?: string): BoardStats {
     testar: row.testar ?? 0,
     ok: row.ok ?? 0,
     falhou: row.falhou ?? 0,
+    cancelado: row.cancelado ?? 0,
   };
 }
 

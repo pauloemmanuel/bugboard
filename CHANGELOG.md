@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `cancelado` status for cards that no longer make sense (the screen changed, the button is gone, or the AI got the scenario wrong): **Cancelar card** button with quick reasons in the web UI, `bug_cancel` MCP tool, `POST /api/bugs/:id/cancel`, and a `cancelado` count in stats
+- Cancelled cards are hidden from **Todos**, listed under the **Cancelado** filter, left out of journey progress (`3/7 ok`), and can be reopened
+
+### Fixed
+
+- Web card handler types (`onFailClick`) and the status filter type predicate now type-check under strict mode
+
 ### Changed
 
 - README: "How it works" flow (QA files, dev's agent fixes over MCP, QA validates), "Why Bugboard" section, one-line Claude Code setup, M8ven Score badge

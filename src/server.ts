@@ -11,6 +11,7 @@ import {
   createBug,
   createSheet,
   failBug,
+  cancelBug,
   getBug,
   getDb,
   listBugsNested,
@@ -112,6 +113,14 @@ export function createApp(): Hono {
     const id = c.req.param("id");
     const body = (await c.req.json().catch(() => ({}))) as { note?: string };
     const bug = failBug(id, body.note);
+    if (!bug) return c.json({ error: "not found" }, 404);
+    return c.json({ bug });
+  });
+
+  app.post("/api/bugs/:id/cancel", async (c) => {
+    const id = c.req.param("id");
+    const body = (await c.req.json().catch(() => ({}))) as { note?: string };
+    const bug = cancelBug(id, body.note);
     if (!bug) return c.json({ error: "not found" }, 404);
     return c.json({ bug });
   });

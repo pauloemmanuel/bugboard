@@ -119,6 +119,7 @@ Create **sheets** (tabs) for a project, a release or a device matrix, then add c
 | `testar` | Ready for human QA |
 | `ok` | Passed |
 | `falhou` | Failed |
+| `cancelado` | Cancelled: the card no longer makes sense (the screen changed, or the AI got the scenario wrong). Hidden from **Todos**, shown under the **Cancelado** filter, reopen anytime |
 
 ## MCP setup
 
@@ -182,6 +183,7 @@ See also [`.mcp.json`](./.mcp.json) in this repo for a working absolute-path exa
 | `bug_update` | Patch fields (round auto-increment rules apply) |
 | `bug_pass` | Human pass (`ok`) |
 | `bug_fail` | Human fail (`falhou`) |
+| `bug_cancel` | Cancel a card that no longer makes sense (`cancelado`), reason in `note` |
 | `board_query` | Graphify-style BFS over the board graph (`sheet_id?`, `question`, `depth=2`, `budget=2000`) |
 | `board_explain` | Neighbors of a card (`#n`/id), file or symbol, grouped by edge type |
 | `board_path` | Shortest path between two cards, files or symbols |

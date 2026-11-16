@@ -1,4 +1,4 @@
-export type BugStatus = "fazendo" | "testar" | "ok" | "falhou";
+export type BugStatus = "fazendo" | "testar" | "ok" | "falhou" | "cancelado";
 export type BugKind = "journey" | "usecase";
 export type Platform = "ios" | "android" | "web" | "ipad";
 
@@ -53,6 +53,7 @@ export interface Stats {
   testar: number;
   ok: number;
   falhou: number;
+  cancelado: number;
 }
 
 const FETCH_INIT: RequestInit = { cache: "no-store" };
@@ -131,6 +132,18 @@ export async function passBug(id: string, note?: string): Promise<Bug> {
 export async function failBug(id: string, note?: string): Promise<Bug> {
   const data = await json<{ bug: Bug }>(
     await fetch(`/api/bugs/${id}/fail`, {
+      ...FETCH_INIT,
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(note ? { note } : {}),
+    }),
+  );
+  return data.bug;
+}
+
+export async function cancelBug(id: string, note?: string): Promise<Bug> {
+  const data = await json<{ bug: Bug }>(
+    await fetch(`/api/bugs/${id}/cancel`, {
       ...FETCH_INIT,
       method: "POST",
       headers: { "Content-Type": "application/json" },

@@ -1,4 +1,4 @@
-export type BugStatus = "fazendo" | "testar" | "ok" | "falhou";
+export type BugStatus = "fazendo" | "testar" | "ok" | "falhou" | "cancelado";
 export type BugKind = "journey" | "usecase";
 export type Platform = "ios" | "android" | "web" | "ipad";
 
@@ -63,6 +63,7 @@ export interface BoardStats {
   testar: number;
   ok: number;
   falhou: number;
+  cancelado: number;
 }
 
 export type LinkType = "related" | "depends_on" | "duplicate" | "regression_of" | "same_flow";

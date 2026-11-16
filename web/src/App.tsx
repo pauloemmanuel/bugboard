@@ -1,8 +1,9 @@
-import { Check, CircleDashed, Eye, X } from "lucide-react";
+import { Ban, Check, CircleDashed, Eye, X } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Bug, BugStatus, Sheet, Stats } from "./api";
 import {
   archiveSheet,
+  cancelBug,
   createSheet,
   failBug,
   fetchBugs,
@@ -29,6 +30,7 @@ const FILTER_LABELS: Record<Filter, string> = {
   testar: "Testar",
   ok: "Ok",
   falhou: "Falhou",
+  cancelado: "Cancelado",
 };
 
 const STATUS_LABEL: Record<BugStatus, string> = {
@@ -36,6 +38,7 @@ const STATUS_LABEL: Record<BugStatus, string> = {
   testar: "Testar",
   ok: "Ok",
   falhou: "Falhou",
+  cancelado: "Cancelado",
 };
 
 const STATUS_ICON: Record<BugStatus, typeof Check> = {
@@ -43,7 +46,15 @@ const STATUS_ICON: Record<BugStatus, typeof Check> = {
   testar: Eye,
   ok: Check,
   falhou: X,
+  cancelado: Ban,
 };
+
+/** Quick reasons for cancelling a card that no longer makes sense. */
+const CANCEL_REASONS = [
+  "A tela mudou e isso não existe mais",
+  "A IA errou o cenário",
+  "Duplicado de outro card",
+];
 
 function StatusBadge({ status }: { status: BugStatus }) {
   const Icon = STATUS_ICON[status];
@@ -56,16 +67,22 @@ function StatusBadge({ status }: { status: BugStatus }) {
 }
 
 function childProgressText(bug: Bug): string | null {
-  const kids = bug.children?.filter((c) => c.kind === "usecase") ?? [];
+  const kids =
+    bug.children?.filter((c) => c.kind === "usecase" && c.status !== "cancelado") ?? [];
   if (kids.length === 0) return null;
   const ok = kids.filter((c) => c.status === "ok").length;
   return `${ok}/${kids.length} ok`;
 }
 
 function filterJourneys(journeys: Bug[], filter: Filter): Bug[] {
-  if (filter === "todos") return journeys;
+  if (filter === "todos") {
+    // Cancelled cards no longer make sense; they only show under the Cancelado filter.
+    return journeys
+      .filter((j) => j.status !== "cancelado")
+      .map((j) => ({ ...j, children: (j.children ?? []).filter((c) => c.status !== "cancelado") }));
+  }
   return journeys
-    .map((j) => {
+    .map((j): Bug | null => {
       const matchingKids = (j.children ?? []).filter((c) => c.status === filter);
       const journeyMatches = j.status === filter;
       if (!journeyMatches && matchingKids.length === 0) return null;
@@ -106,12 +123,14 @@ function CardActions({
   onReopen,
   onPass,
   onFailClick,
+  onCancelClick,
 }: {
   bug: Bug;
   onReady: () => void;
   onReopen: () => void;
   onPass: () => void;
   onFailClick: () => void;
+  onCancelClick: () => void;
 }) {
   return (
     <div className="actions">
@@ -130,9 +149,20 @@ function CardActions({
           Pronto pra testar
         </button>
       )}
-      {bug.status === "falhou" && (
+      {(bug.status === "falhou" || bug.status === "cancelado") && (
         <button type="button" className="btn" onClick={onReopen}>
           Reabrir
+        </button>
+      )}
+      {bug.status !== "ok" && bug.status !== "cancelado" && (
+        <button
+          type="button"
+          className="btn ghost cancel-card"
+          onClick={onCancelClick}
+          title="O card não faz mais sentido"
+        >
+          <Ban size={14} strokeWidth={2.5} aria-hidden />
+          Cancelar card
         </button>
       )}
     </div>
@@ -245,10 +275,16 @@ function BugCardBody({ bug }: { bug: Bug }) {
       )}
       {bug.note && (
         <div
-          className={`card-section${bug.status === "falhou" ? " fail-reason" : ""}`}
+          className={`card-section${
+            bug.status === "falhou" ? " fail-reason" : bug.status === "cancelado" ? " cancel-reason" : ""
+          }`}
         >
           <div className="section-label">
-            {bug.status === "falhou" ? "Por que falhou" : "Nota"}
+            {bug.status === "falhou"
+              ? "Por que falhou"
+              : bug.status === "cancelado"
+                ? "Por que cancelou"
+                : "Nota"}
           </div>
           <SectionText text={bug.note} />
         </div>
@@ -266,12 +302,16 @@ function UseCaseCard({
     onReady: (b: Bug) => void;
     onReopen: (b: Bug) => void;
     onPass: (b: Bug) => void;
-    onFail: (b: Bug) => void;
+    onFailClick: (b: Bug) => void;
+    onCancelClick: (b: Bug) => void;
   };
 }) {
   const ambiente = extractAmbienteFromPrep(bug.prep);
   return (
-    <article className="card card-child" id={`bug-${bug.id}`}>
+    <article
+      className={`card card-child${bug.status === "cancelado" ? " is-cancelled" : ""}`}
+      id={`bug-${bug.id}`}
+    >
       <div className="card-head">
         <div className="card-title">
           <span className="uc-n">#{bug.n}</span> {bug.title}
@@ -289,6 +329,7 @@ function UseCaseCard({
         onReopen={() => handlers.onReopen(bug)}
         onPass={() => handlers.onPass(bug)}
         onFailClick={() => handlers.onFailClick(bug)}
+        onCancelClick={() => handlers.onCancelClick(bug)}
       />
     </article>
   );
@@ -303,7 +344,8 @@ function JourneyCard({
     onReady: (b: Bug) => void;
     onReopen: (b: Bug) => void;
     onPass: (b: Bug) => void;
-    onFail: (b: Bug) => void;
+    onFailClick: (b: Bug) => void;
+    onCancelClick: (b: Bug) => void;
   };
 }) {
   const progress = childProgressText(bug);
@@ -312,7 +354,10 @@ function JourneyCard({
   const ambiente = extractAmbienteFromPrep(bug.prep);
 
   return (
-    <article className="card card-journey" id={`bug-${bug.id}`}>
+    <article
+      className={`card card-journey${bug.status === "cancelado" ? " is-cancelled" : ""}`}
+      id={`bug-${bug.id}`}
+    >
       <div className="card-head">
         <div className="card-title journey-title">
           <PlatformIcon platform={platform} />
@@ -334,6 +379,7 @@ function JourneyCard({
         onReopen={() => handlers.onReopen(bug)}
         onPass={() => handlers.onPass(bug)}
         onFailClick={() => handlers.onFailClick(bug)}
+        onCancelClick={() => handlers.onCancelClick(bug)}
       />
       {children.length > 0 && (
         <div className="child-stack">
@@ -494,6 +540,88 @@ function FailMotivoDialog({
   );
 }
 
+function CancelCardDialog({
+  bug,
+  busy,
+  onConfirm,
+  onCancel,
+}: {
+  bug: Bug | null;
+  busy: boolean;
+  onConfirm: (motivo: string) => void;
+  onCancel: () => void;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const [motivo, setMotivo] = useState("");
+  const trimOk = motivo.trim().length > 0;
+
+  useEffect(() => {
+    setMotivo("");
+  }, [bug?.id]);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (bug && !el.open) el.showModal();
+    if (!bug && el.open) el.close();
+  }, [bug]);
+
+  return (
+    <dialog
+      ref={ref}
+      className="confirm-dialog fail-motivo-dialog"
+      aria-labelledby="cancel-card-title"
+      onCancel={(e) => {
+        e.preventDefault();
+        if (!busy) onCancel();
+      }}
+    >
+      <h2 id="cancel-card-title">Cancelar card?</h2>
+      <p>
+        Card <strong>#{bug?.n}</strong> sai do quadro e fica só no filtro Cancelado. Dá pra reabrir
+        depois.
+      </p>
+      <div className="reason-chips" role="group" aria-label="Motivos rápidos">
+        {CANCEL_REASONS.map((r) => (
+          <button
+            key={r}
+            type="button"
+            className={`reason-chip${motivo === r ? " active" : ""}`}
+            onClick={() => setMotivo(r)}
+            disabled={busy}
+          >
+            {r}
+          </button>
+        ))}
+      </div>
+      <label className="fail-motivo-field">
+        <span className="section-label">Motivo</span>
+        <textarea
+          value={motivo}
+          onChange={(e) => setMotivo(e.target.value)}
+          rows={3}
+          placeholder="Por que esse card não faz mais sentido"
+          disabled={busy}
+          autoFocus
+        />
+      </label>
+      <div className="inline-form">
+        <button type="button" className="btn" onClick={onCancel} disabled={busy}>
+          Voltar
+        </button>
+        <button
+          type="button"
+          className="btn danger"
+          disabled={busy || !trimOk}
+          onClick={() => onConfirm(motivo.trim())}
+        >
+          Cancelar card
+        </button>
+      </div>
+    </dialog>
+  );
+}
+
 function ArchiveSheetDialog({
   sheet,
   busy,
@@ -557,6 +685,8 @@ export function App() {
     null,
   );
   const [failing, setFailing] = useState(false);
+  const [cancelPromptBug, setCancelPromptBug] = useState<Bug | null>(null);
+  const [cancelling, setCancelling] = useState(false);
   const activeRef = useRef<string | null>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
   const pendingTabFocus = useRef(false);
@@ -761,6 +891,27 @@ export function App() {
     onFailClick: (bug: Bug) => {
       setFailPromptBug(bug);
     },
+    onCancelClick: (bug: Bug) => {
+      setCancelPromptBug(bug);
+    },
+    onCancelConfirm: async (bug: Bug, motivo: string) => {
+      bugsSnapshot.current = bugs;
+      markScrollPreserve();
+      setCancelling(true);
+      setBugs((prev) => patchBugInTree(prev, bug.id, { status: "cancelado", note: motivo }));
+      try {
+        const updated = await cancelBug(bug.id, motivo);
+        setBugs((prev) => mergeBugIntoTree(prev, updated));
+        await refreshStats(activeSheetId);
+        setCancelPromptBug(null);
+      } catch {
+        setBugs(bugsSnapshot.current ?? bugs);
+        setError("Não foi possível cancelar o card.");
+      } finally {
+        setCancelling(false);
+        bugsSnapshot.current = null;
+      }
+    },
     onFailConfirm: async (bug: Bug, motivo: string, atts: AttachmentRef[]) => {
       bugsSnapshot.current = bugs;
       markScrollPreserve();
@@ -827,6 +978,7 @@ export function App() {
             <span>Testar: {stats.testar}</span>
             <span>Ok: {stats.ok}</span>
             <span>Falhou: {stats.falhou}</span>
+            <span>Cancelado: {stats.cancelado ?? 0}</span>
           </div>
         )}
       </header>
@@ -914,6 +1066,16 @@ export function App() {
         }}
         onCancel={() => {
           if (!failing) setFailPromptBug(null);
+        }}
+      />
+      <CancelCardDialog
+        bug={cancelPromptBug}
+        busy={cancelling}
+        onConfirm={(motivo) => {
+          if (cancelPromptBug) void handlers.onCancelConfirm(cancelPromptBug, motivo);
+        }}
+        onCancel={() => {
+          if (!cancelling) setCancelPromptBug(null);
         }}
       />
       <ArchiveSheetDialog
