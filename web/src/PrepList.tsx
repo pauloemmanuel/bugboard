@@ -2,15 +2,18 @@ import { CopyChip } from "./CopyButton";
 import { groupPrepRows } from "./prepCopy";
 import { prepLinesForDisplay } from "./prepLine";
 
-const KIND_LABEL = {
-  email: "e-mail",
-  senha: "senha",
-  url: "URL",
-  comando: "comando",
-  id: "id",
-} as const;
+import { useI18n, type MessageKey } from "./i18n";
+
+const KIND_LABEL: Record<"email" | "senha" | "url" | "comando" | "id", MessageKey> = {
+  email: "kindEmail",
+  senha: "kindPassword",
+  url: "kindUrl",
+  comando: "kindCommand",
+  id: "kindId",
+};
 
 export function PrepList({ lines }: { lines: string[] }) {
+  const { t } = useI18n();
   const rows = groupPrepRows(prepLinesForDisplay(lines));
   return (
     <ul className="prep-list">
@@ -21,7 +24,7 @@ export function PrepList({ lines }: { lines: string[] }) {
           {row.values.length > 0 && (
             <span className="prep-chips">
               {row.values.map((v) => (
-                <CopyChip key={`${v.kind}:${v.value}`} text={v.value} label={KIND_LABEL[v.kind]} />
+                <CopyChip key={`${v.kind}:${v.value}`} text={v.value} label={t(KIND_LABEL[v.kind])} />
               ))}
             </span>
           )}

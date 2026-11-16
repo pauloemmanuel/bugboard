@@ -51,6 +51,7 @@ flowchart LR
 - **Humans stay in charge of quality.** Agents can mark work as ready, but only a person clicks Pass or Fail.
 - **Local first.** Data stays in SQLite on your machine. Bind the server to your LAN if a small team wants to share one board.
 - **Spreadsheet feel.** Sheet tabs per project, release or device, plus status filters, repo chips and numbered steps.
+- **Speaks your language.** The UI ships in the 10 most spoken languages (English by default), switchable from the header.
 - **Code aware.** Cards link to files and symbols, so you can ask which bugs touch the same code (see [Knowledge graph](#knowledge-graph)).
 
 ## Quick start

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Bug } from "./api";
 import { buildFailAiPrompt } from "./failAiPrompt";
 import type { AttachmentRef } from "./imageTokens";
+import { useI18n } from "./i18n";
 
 export function FailAiPromptDialog({
   sheetName,
@@ -17,6 +18,7 @@ export function FailAiPromptDialog({
   atts: AttachmentRef[];
   onClose: () => void;
 }) {
+  const { t } = useI18n();
   const ref = useRef<HTMLDialogElement>(null);
   const [copied, setCopied] = useState(false);
   const resetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -63,11 +65,9 @@ export function FailAiPromptDialog({
         onClose();
       }}
     >
-      <h2 id="fail-ai-prompt-title">Falhou registrado</h2>
-      <p>
-        Copie o prompt e cole no chat com o bot. Ele já traz a aba, o card e o motivo.
-      </p>
-      <pre className="fail-ai-prompt-preview" aria-label="Texto do prompt">
+      <h2 id="fail-ai-prompt-title">{t("aiTitle")}</h2>
+      <p>{t("aiBody")}</p>
+      <pre className="fail-ai-prompt-preview" dir="ltr" aria-label={t("aiPreview")}>
         {prompt}
       </pre>
       <div className="inline-form fail-ai-prompt-actions">
@@ -79,17 +79,17 @@ export function FailAiPromptDialog({
           {copied ? (
             <>
               <Check size={16} strokeWidth={2.5} aria-hidden />
-              Copiado
+              {t("copied")}
             </>
           ) : (
             <>
               <Copy size={16} strokeWidth={2.5} aria-hidden />
-              Copiar prompt pra IA
+              {t("copyPrompt")}
             </>
           )}
         </button>
         <button type="button" className="btn" onClick={onClose} autoFocus>
-          OK
+          {t("ok_button")}
         </button>
       </div>
     </dialog>

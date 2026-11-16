@@ -1,4 +1,4 @@
-import { Ban, Check, CircleDashed, Eye, X } from "lucide-react";
+import { Ban, Check, CircleDashed, Eye, Languages, X } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Bug, BugStatus, Sheet, Stats } from "./api";
 import {
@@ -19,26 +19,21 @@ import { PrepList } from "./PrepList";
 import { extractAmbienteFromPrep, prepLinesForDisplay } from "./prepLine";
 import { FailAiPromptDialog } from "./FailAiPromptDialog";
 import { SectionText } from "./SectionText";
+import { LANGS, useI18n, type Lang, type MessageKey } from "./i18n";
 
 type Filter = "todos" | BugStatus;
 
 const POLL_INTERVAL_MS = 2500;
 
-const FILTER_LABELS: Record<Filter, string> = {
-  todos: "Todos",
-  fazendo: "Fazendo",
-  testar: "Testar",
-  ok: "Ok",
-  falhou: "Falhou",
-  cancelado: "Cancelado",
-};
+const FILTERS: Filter[] = ["todos", "fazendo", "testar", "ok", "falhou", "cancelado"];
 
-const STATUS_LABEL: Record<BugStatus, string> = {
-  fazendo: "Fazendo",
-  testar: "Testar",
-  ok: "Ok",
-  falhou: "Falhou",
-  cancelado: "Cancelado",
+const FILTER_LABEL: Record<Filter, MessageKey> = {
+  todos: "all",
+  fazendo: "fazendo",
+  testar: "testar",
+  ok: "ok",
+  falhou: "falhou",
+  cancelado: "cancelado",
 };
 
 const STATUS_ICON: Record<BugStatus, typeof Check> = {
@@ -50,28 +45,25 @@ const STATUS_ICON: Record<BugStatus, typeof Check> = {
 };
 
 /** Quick reasons for cancelling a card that no longer makes sense. */
-const CANCEL_REASONS = [
-  "A tela mudou e isso não existe mais",
-  "A IA errou o cenário",
-  "Duplicado de outro card",
-];
+const CANCEL_REASONS: MessageKey[] = ["reasonScreenChanged", "reasonAiWrong", "reasonDuplicate"];
 
 function StatusBadge({ status }: { status: BugStatus }) {
+  const { t } = useI18n();
   const Icon = STATUS_ICON[status];
   return (
     <span className={`badge ${status}`}>
       <Icon size={14} strokeWidth={2.5} aria-hidden />
-      {STATUS_LABEL[status]}
+      {t(FILTER_LABEL[status])}
     </span>
   );
 }
 
-function childProgressText(bug: Bug): string | null {
+function childProgress(bug: Bug): { ok: number; total: number } | null {
   const kids =
     bug.children?.filter((c) => c.kind === "usecase" && c.status !== "cancelado") ?? [];
   if (kids.length === 0) return null;
   const ok = kids.filter((c) => c.status === "ok").length;
-  return `${ok}/${kids.length} ok`;
+  return { ok, total: kids.length };
 }
 
 function filterJourneys(journeys: Bug[], filter: Filter): Bug[] {
@@ -132,26 +124,27 @@ function CardActions({
   onFailClick: () => void;
   onCancelClick: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <div className="actions">
       {bug.status === "testar" && (
         <>
           <button type="button" className="btn primary" onClick={onPass}>
-            Passou
+            {t("pass")}
           </button>
           <button type="button" className="btn danger" onClick={onFailClick}>
-            Falhou
+            {t("fail")}
           </button>
         </>
       )}
       {bug.status === "fazendo" && (
         <button type="button" className="btn primary" onClick={onReady}>
-          Pronto pra testar
+          {t("readyToTest")}
         </button>
       )}
       {(bug.status === "falhou" || bug.status === "cancelado") && (
         <button type="button" className="btn" onClick={onReopen}>
-          Reabrir
+          {t("reopen")}
         </button>
       )}
       {bug.status !== "ok" && bug.status !== "cancelado" && (
@@ -159,10 +152,10 @@ function CardActions({
           type="button"
           className="btn ghost cancel-card"
           onClick={onCancelClick}
-          title="O card não faz mais sentido"
+          title={t("cancelCardHint")}
         >
           <Ban size={14} strokeWidth={2.5} aria-hidden />
-          Cancelar card
+          {t("cancelCard")}
         </button>
       )}
     </div>
@@ -170,21 +163,23 @@ function CardActions({
 }
 
 function AmbienteChip({ value }: { value: string }) {
+  const { t } = useI18n();
   return (
-    <span className="ambiente-chip" title={`Ambiente: ${value}`}>
+    <span className="ambiente-chip" title={t("environment", { v: value })}>
       {value}
     </span>
   );
 }
 
 function BugCardBody({ bug }: { bug: Bug }) {
+  const { t } = useI18n();
   const prepVisible = prepLinesForDisplay(bug.prep);
   return (
     <>
       {bug.repos.length > 0 && (
         <div className="card-section">
-          <div className="section-label">Repos</div>
-          <ul className="repo-chips" aria-label="Repositórios">
+          <div className="section-label">{t("repos")}</div>
+          <ul className="repo-chips" aria-label={t("reposAria")}>
             {bug.repos.map((repo) => (
               <li key={repo} className="repo-chip">
                 {repo}
@@ -195,7 +190,7 @@ function BugCardBody({ bug }: { bug: Bug }) {
       )}
       {(bug.files?.length ?? 0) > 0 && (
         <div className="card-section">
-          <div className="section-label">Files</div>
+          <div className="section-label">{t("files")}</div>
           <ul className="repo-chips code-chips">
             {bug.files!.map((f) => (
               <li key={f} className="repo-chip" title={f}>
@@ -207,7 +202,7 @@ function BugCardBody({ bug }: { bug: Bug }) {
       )}
       {(bug.symbols?.length ?? 0) > 0 && (
         <div className="card-section">
-          <div className="section-label">Symbols</div>
+          <div className="section-label">{t("symbols")}</div>
           <ul className="repo-chips code-chips">
             {bug.symbols!.map((x) => (
               <li key={x} className="repo-chip">
@@ -219,7 +214,7 @@ function BugCardBody({ bug }: { bug: Bug }) {
       )}
       {(bug.links?.length ?? 0) > 0 && (
         <div className="card-section">
-          <div className="section-label">Related</div>
+          <div className="section-label">{t("related")}</div>
           <ul className="repo-chips">
             {bug.links!.map((l) => (
               <li key={`${l.id}:${l.type}:${l.direction}`}>
@@ -243,23 +238,23 @@ function BugCardBody({ bug }: { bug: Bug }) {
       )}
       {bug.kind === "usecase" && (
         <div className="card-section">
-          <div className="section-label">Preparação</div>
+          <div className="section-label">{t("prep")}</div>
           {prepVisible.length > 0 ? (
             <PrepList lines={bug.prep} />
           ) : (
-            <p className="section-body muted-hint">Sem preparação neste card.</p>
+            <p className="section-body muted-hint">{t("noPrep")}</p>
           )}
         </div>
       )}
       {bug.where && (
         <div className="card-section">
-          <div className="section-label">Onde</div>
+          <div className="section-label">{t("where")}</div>
           <SectionText text={bug.where} />
         </div>
       )}
       {bug.steps.length > 0 && (
         <div className="card-section">
-          <div className="section-label">Passos</div>
+          <div className="section-label">{t("steps")}</div>
           <ol className="steps">
             {bug.steps.map((step, i) => (
               <li key={i}>{step}</li>
@@ -269,7 +264,7 @@ function BugCardBody({ bug }: { bug: Bug }) {
       )}
       {bug.fix && (
         <div className="card-section">
-          <div className="section-label">Correção</div>
+          <div className="section-label">{t("fix")}</div>
           <SectionText text={bug.fix} />
         </div>
       )}
@@ -281,10 +276,10 @@ function BugCardBody({ bug }: { bug: Bug }) {
         >
           <div className="section-label">
             {bug.status === "falhou"
-              ? "Por que falhou"
+              ? t("whyFailed")
               : bug.status === "cancelado"
-                ? "Por que cancelou"
-                : "Nota"}
+                ? t("whyCancelled")
+                : t("note")}
           </div>
           <SectionText text={bug.note} />
         </div>
@@ -306,6 +301,7 @@ function UseCaseCard({
     onCancelClick: (b: Bug) => void;
   };
 }) {
+  const { t } = useI18n();
   const ambiente = extractAmbienteFromPrep(bug.prep);
   return (
     <article
@@ -315,7 +311,7 @@ function UseCaseCard({
       <div className="card-head">
         <div className="card-title">
           <span className="uc-n">#{bug.n}</span> {bug.title}
-          {bug.round > 1 ? ` (rodada ${bug.round})` : ""}
+          {bug.round > 1 ? ` (${t("round", { n: bug.round })})` : ""}
         </div>
         <div className="head-badges">
           {ambiente ? <AmbienteChip value={ambiente} /> : null}
@@ -348,7 +344,9 @@ function JourneyCard({
     onCancelClick: (b: Bug) => void;
   };
 }) {
-  const progress = childProgressText(bug);
+  const { t } = useI18n();
+  const prog = childProgress(bug);
+  const progress = prog ? t("progress", prog) : null;
   const platform = bug.platform;
   const children = bug.children ?? [];
   const ambiente = extractAmbienteFromPrep(bug.prep);
@@ -363,7 +361,7 @@ function JourneyCard({
           <PlatformIcon platform={platform} />
           <span>
             #{bug.n} {bug.title}
-            {bug.round > 1 ? ` (rodada ${bug.round})` : ""}
+            {bug.round > 1 ? ` (${t("round", { n: bug.round })})` : ""}
           </span>
         </div>
         <div className="head-badges">
@@ -396,6 +394,39 @@ function JourneyCard({
   );
 }
 
+/** Renders a translated sentence with one {slot} shown in bold. */
+function WithStrong({ text, slot, value }: { text: string; slot: string; value: string }) {
+  const [before, after = ""] = text.split(`{${slot}}`);
+  return (
+    <>
+      {before}
+      <strong>{value}</strong>
+      {after}
+    </>
+  );
+}
+
+function WithCard({ text, n }: { text: string; n?: number }) {
+  return <WithStrong text={text} slot="card" value={n !== undefined ? `#${n}` : ""} />;
+}
+
+function LanguageSelect() {
+  const { lang, setLang, t } = useI18n();
+  return (
+    <label className="lang-select">
+      <Languages size={16} strokeWidth={2.25} aria-hidden />
+      <span className="sr-only">{t("language")}</span>
+      <select value={lang} onChange={(e) => setLang(e.target.value as Lang)} aria-label={t("language")}>
+        {LANGS.map((l) => (
+          <option key={l.code} value={l.code} lang={l.code}>
+            {l.name}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 function FailMotivoDialog({
   bug,
   busy,
@@ -407,6 +438,7 @@ function FailMotivoDialog({
   onConfirm: (motivo: string, atts: AttachmentRef[]) => void;
   onCancel: () => void;
 }) {
+  const { t } = useI18n();
   const ref = useRef<HTMLDialogElement>(null);
   const [motivo, setMotivo] = useState("");
   const [atts, setAtts] = useState<AttachmentRef[]>([]);
@@ -436,7 +468,7 @@ function FailMotivoDialog({
           return r.text;
         });
       } catch {
-        setUpError("Imagem não enviada (png, jpg, webp até 10 MB)");
+        setUpError(t("uploadError"));
       }
     }
   }
@@ -473,12 +505,12 @@ function FailMotivoDialog({
         if (!busy) cancel();
       }}
     >
-      <h2 id="fail-motivo-title">Por que falhou?</h2>
+      <h2 id="fail-motivo-title">{t("failTitle")}</h2>
       <p>
-        Card <strong>#{bug?.n}</strong>. O motivo fica salvo no card e o bot lê via MCP.
+        <WithCard text={t("failBody")} n={bug?.n} />
       </p>
       <label className="fail-motivo-field">
-        <span className="section-label">Motivo</span>
+        <span className="section-label">{t("reason")}</span>
         <textarea
           value={motivo}
           ref={taRef}
@@ -498,7 +530,7 @@ function FailMotivoDialog({
             }
           }}
           rows={4}
-          placeholder="O que deu errado no teste"
+          placeholder={t("failPlaceholder")}
           disabled={busy}
           autoFocus
         />
@@ -508,10 +540,10 @@ function FailMotivoDialog({
         <ul className="att-thumbs">
           {atts.map((a) => (
             <li key={a.n} className="att-thumb">
-              <button type="button" className="att-img" onClick={() => setZoom(a)} title={`Imagem #${a.n}`}>
-                <img src={attachmentUrl(bug.id, a.n)} alt={`Imagem #${a.n}`} />
+              <button type="button" className="att-img" onClick={() => setZoom(a)} title={t("image", { n: a.n })}>
+                <img src={attachmentUrl(bug.id, a.n)} alt={t("image", { n: a.n })} />
               </button>
-              <button type="button" className="att-x" aria-label={`Remover imagem ${a.n}`} onClick={() => removeAtt(a)}>
+              <button type="button" className="att-x" aria-label={t("removeImage", { n: a.n })} onClick={() => removeAtt(a)}>
                 x
               </button>
             </li>
@@ -520,12 +552,12 @@ function FailMotivoDialog({
       )}
       {bug && zoom && (
         <div className="att-zoom" onClick={() => setZoom(null)}>
-          <img src={attachmentUrl(bug.id, zoom.n)} alt={`Imagem #${zoom.n}`} />
+          <img src={attachmentUrl(bug.id, zoom.n)} alt={t("image", { n: zoom.n })} />
         </div>
       )}
       <div className="inline-form">
         <button type="button" className="btn" onClick={cancel} disabled={busy}>
-          Cancelar
+          {t("cancel")}
         </button>
         <button
           type="button"
@@ -533,7 +565,7 @@ function FailMotivoDialog({
           disabled={busy || !trimOk}
           onClick={() => onConfirm(motivo.trim(), atts)}
         >
-          Marcar como falhou
+          {t("markFailed")}
         </button>
       </div>
     </dialog>
@@ -551,6 +583,7 @@ function CancelCardDialog({
   onConfirm: (motivo: string) => void;
   onCancel: () => void;
 }) {
+  const { t } = useI18n();
   const ref = useRef<HTMLDialogElement>(null);
   const [motivo, setMotivo] = useState("");
   const trimOk = motivo.trim().length > 0;
@@ -576,38 +609,40 @@ function CancelCardDialog({
         if (!busy) onCancel();
       }}
     >
-      <h2 id="cancel-card-title">Cancelar card?</h2>
+      <h2 id="cancel-card-title">{t("cancelTitle")}</h2>
       <p>
-        Card <strong>#{bug?.n}</strong> sai do quadro e fica só no filtro Cancelado. Dá pra reabrir
-        depois.
+        <WithCard text={t("cancelBody")} n={bug?.n} />
       </p>
-      <div className="reason-chips" role="group" aria-label="Motivos rápidos">
-        {CANCEL_REASONS.map((r) => (
-          <button
-            key={r}
-            type="button"
-            className={`reason-chip${motivo === r ? " active" : ""}`}
-            onClick={() => setMotivo(r)}
-            disabled={busy}
-          >
-            {r}
-          </button>
-        ))}
+      <div className="reason-chips" role="group" aria-label={t("quickReasons")}>
+        {CANCEL_REASONS.map((key) => {
+          const r = t(key);
+          return (
+            <button
+              key={key}
+              type="button"
+              className={`reason-chip${motivo === r ? " active" : ""}`}
+              onClick={() => setMotivo(r)}
+              disabled={busy}
+            >
+              {r}
+            </button>
+          );
+        })}
       </div>
       <label className="fail-motivo-field">
-        <span className="section-label">Motivo</span>
+        <span className="section-label">{t("reason")}</span>
         <textarea
           value={motivo}
           onChange={(e) => setMotivo(e.target.value)}
           rows={3}
-          placeholder="Por que esse card não faz mais sentido"
+          placeholder={t("cancelPlaceholder")}
           disabled={busy}
           autoFocus
         />
       </label>
       <div className="inline-form">
         <button type="button" className="btn" onClick={onCancel} disabled={busy}>
-          Voltar
+          {t("back")}
         </button>
         <button
           type="button"
@@ -615,7 +650,7 @@ function CancelCardDialog({
           disabled={busy || !trimOk}
           onClick={() => onConfirm(motivo.trim())}
         >
-          Cancelar card
+          {t("cancelCard")}
         </button>
       </div>
     </dialog>
@@ -633,6 +668,7 @@ function ArchiveSheetDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const { t } = useI18n();
   const ref = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -652,16 +688,16 @@ function ArchiveSheetDialog({
         if (!busy) onCancel();
       }}
     >
-      <h2 id="archive-sheet-title">Arquivar aba?</h2>
+      <h2 id="archive-sheet-title">{t("archiveTitle")}</h2>
       <p>
-        A aba <strong>{sheet?.name}</strong> sai da lista de abas.
+        <WithStrong text={t("archiveBody")} slot="name" value={sheet?.name ?? ""} />
       </p>
       <div className="inline-form">
         <button type="button" className="btn" onClick={onCancel} disabled={busy} autoFocus>
-          Cancelar
+          {t("cancel")}
         </button>
         <button type="button" className="btn danger" onClick={onConfirm} disabled={busy}>
-          Arquivar aba
+          {t("archiveSheet")}
         </button>
       </div>
     </dialog>
@@ -669,6 +705,7 @@ function ArchiveSheetDialog({
 }
 
 export function App() {
+  const { t } = useI18n();
   const [sheets, setSheets] = useState<Sheet[]>([]);
   const [activeSheetId, setActiveSheetId] = useState<string | null>(null);
   const [bugs, setBugs] = useState<Bug[]>([]);
@@ -728,7 +765,7 @@ export function App() {
           setStats(await fetchStats());
         }
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Erro ao carregar");
+        setError(e instanceof Error ? e.message : t("errLoad"));
       } finally {
         if (opts?.initial) setInitialLoading(false);
       }
@@ -746,7 +783,7 @@ export function App() {
         setBugs(b);
         setStats(st);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Erro ao carregar");
+        setError(e instanceof Error ? e.message : t("errLoad"));
       }
     },
     [activeSheetId, markScrollPreserve],
@@ -840,7 +877,7 @@ export function App() {
 
   const visible = filterJourneys(bugs, filter);
   const activeSheetName =
-    sheets.find((s) => s.id === activeSheetId)?.name ?? "Sem aba";
+    sheets.find((s) => s.id === activeSheetId)?.name ?? t("noSheet");
 
   const handlers = {
     onReady: async (bug: Bug) => {
@@ -853,7 +890,7 @@ export function App() {
         await refreshStats(activeSheetId);
       } catch {
         setBugs(bugsSnapshot.current ?? bugs);
-        setError("Não foi possível atualizar o card.");
+        setError(t("errUpdate"));
       } finally {
         bugsSnapshot.current = null;
       }
@@ -868,7 +905,7 @@ export function App() {
         await refreshStats(activeSheetId);
       } catch {
         setBugs(bugsSnapshot.current ?? bugs);
-        setError("Não foi possível atualizar o card.");
+        setError(t("errUpdate"));
       } finally {
         bugsSnapshot.current = null;
       }
@@ -883,7 +920,7 @@ export function App() {
         await refreshStats(activeSheetId);
       } catch {
         setBugs(bugsSnapshot.current ?? bugs);
-        setError("Não foi possível marcar como passou.");
+        setError(t("errPass"));
       } finally {
         bugsSnapshot.current = null;
       }
@@ -906,7 +943,7 @@ export function App() {
         setCancelPromptBug(null);
       } catch {
         setBugs(bugsSnapshot.current ?? bugs);
-        setError("Não foi possível cancelar o card.");
+        setError(t("errCancel"));
       } finally {
         setCancelling(false);
         bugsSnapshot.current = null;
@@ -927,7 +964,7 @@ export function App() {
         setFailAiFollowUp({ bug: updated, motivo, atts });
       } catch {
         setBugs(bugsSnapshot.current ?? bugs);
-        setError("Não foi possível marcar como falhou.");
+        setError(t("errFail"));
       } finally {
         setFailing(false);
         bugsSnapshot.current = null;
@@ -952,7 +989,7 @@ export function App() {
     } catch {
       setSheetToArchive(null);
       await loadSheetData(activeRef.current, { refreshSheets: true });
-      setError("Não foi possível arquivar a aba. Tente de novo.");
+      setError(t("errArchive"));
     } finally {
       setArchiving(false);
     }
@@ -970,15 +1007,18 @@ export function App() {
   return (
     <>
       <header className="board-header">
-        <h1>Bugboard</h1>
+        <div className="board-header-top">
+          <h1>Bugboard</h1>
+          <LanguageSelect />
+        </div>
         {stats && (
           <div className="stats">
-            <span>Total: {stats.total}</span>
-            <span>Fazendo: {stats.fazendo}</span>
-            <span>Testar: {stats.testar}</span>
-            <span>Ok: {stats.ok}</span>
-            <span>Falhou: {stats.falhou}</span>
-            <span>Cancelado: {stats.cancelado ?? 0}</span>
+            <span>{t("total")}: {stats.total}</span>
+            <span>{t("fazendo")}: {stats.fazendo}</span>
+            <span>{t("testar")}: {stats.testar}</span>
+            <span>{t("ok")}: {stats.ok}</span>
+            <span>{t("falhou")}: {stats.falhou}</span>
+            <span>{t("cancelado")}: {stats.cancelado ?? 0}</span>
           </div>
         )}
       </header>
@@ -997,8 +1037,8 @@ export function App() {
               <button
                 type="button"
                 className="tab-close"
-                aria-label={`Arquivar aba ${s.name}`}
-                title="Arquivar aba"
+                aria-label={t("archiveSheetNamed", { name: s.name })}
+                title={t("archiveSheet")}
                 onClick={() => setSheetToArchive(s)}
               >
                 <X size={14} strokeWidth={2.5} aria-hidden />
@@ -1011,40 +1051,40 @@ export function App() {
                 type="text"
                 value={newSheetName}
                 onChange={(e) => setNewSheetName(e.target.value)}
-                placeholder="Nome da aba"
-                aria-label="Nome da nova aba"
+                placeholder={t("sheetName")}
+                aria-label={t("newSheetName")}
               />
               <button type="button" className="btn primary" onClick={() => void onCreateSheet()}>
-                Criar
+                {t("create")}
               </button>
               <button type="button" className="btn" onClick={() => setShowNewSheet(false)}>
-                Cancelar
+                {t("cancel")}
               </button>
             </div>
           ) : (
             <button type="button" className="tab-new" onClick={() => setShowNewSheet(true)}>
-              + Aba
+              {t("newSheet")}
             </button>
           )}
         </div>
 
         <div className="filters">
-          {(Object.keys(FILTER_LABELS) as Filter[]).map((f) => (
+          {FILTERS.map((f) => (
             <button
               key={f}
               type="button"
               className={`filter${filter === f ? " active" : ""}`}
               onClick={() => setFilter(f)}
             >
-              {FILTER_LABELS[f]}
+              {t(FILTER_LABEL[f])}
             </button>
           ))}
         </div>
 
         {initialLoading ? (
-          <p>Carregando...</p>
+          <p>{t("loading")}</p>
         ) : visible.length === 0 ? (
-          <div className="empty">Nenhum card ainda. Os agentes criam via MCP.</div>
+          <div className="empty">{t("empty")}</div>
         ) : (
           <div className="cards">
             {visible.map((bug) => {

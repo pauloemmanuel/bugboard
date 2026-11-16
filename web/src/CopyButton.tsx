@@ -1,5 +1,6 @@
 import { Check, Copy } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useI18n } from "./i18n";
 
 export function CopyButton({
   text,
@@ -10,6 +11,7 @@ export function CopyButton({
   label: string;
   compact?: boolean;
 }) {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   const resetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -35,18 +37,18 @@ export function CopyButton({
       type="button"
       className={`copy-btn${compact ? " copy-btn-compact" : ""}${copied ? " copied" : ""}`}
       onClick={() => void onCopy()}
-      aria-label={copied ? "Copiado" : label}
-      title={copied ? "Copiado" : label}
+      aria-label={copied ? t("copied") : label}
+      title={copied ? t("copied") : label}
     >
       {copied ? (
         <>
           <Check size={compact ? 14 : 16} strokeWidth={2.5} aria-hidden />
-          {!compact && <span className="copy-btn-text">Copiado</span>}
+          {!compact && <span className="copy-btn-text">{t("copied")}</span>}
         </>
       ) : (
         <>
           <Copy size={compact ? 14 : 16} strokeWidth={2.5} aria-hidden />
-          {!compact && <span className="copy-btn-text">Copiar</span>}
+          {!compact && <span className="copy-btn-text">{t("copy")}</span>}
         </>
       )}
     </button>
@@ -54,6 +56,7 @@ export function CopyButton({
 }
 
 export function CopyChip({ text, label }: { text: string; label: string }) {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   async function onCopy() {
     try {
@@ -70,7 +73,7 @@ export function CopyChip({ text, label }: { text: string; label: string }) {
       className={`copy-chip${copied ? " copied" : ""}`}
       onClick={() => void onCopy()}
       title={text}
-      aria-label={`Copiar ${label}`}
+      aria-label={t("copyItem", { label })}
     >
       {copied ? <Check size={13} strokeWidth={2.5} aria-hidden /> : <Copy size={13} strokeWidth={2.5} aria-hidden />}
       <span>{label}</span>
