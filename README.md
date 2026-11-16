@@ -2,6 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen)](package.json)
+[![M8ven Score](https://m8ven.ai/badge/mcp/pauloemmanuel/bugboard)](https://m8ven.ai/mcp/pauloemmanuel/bugboard?s=readme)
 
 Bugboard is a **local bug board** with Excel-like **sheet tabs**. Any AI coding agent that speaks MCP can create and update cards; humans mark **Pass** or **Fail** in the browser. Run it on your machine, or bind the HTTP server to your LAN if you want a small team to share one board.
 
