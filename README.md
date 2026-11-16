@@ -14,17 +14,36 @@ Bugboard is a **local bug board** with Excel-like **sheet tabs**, built for team
 
 ```mermaid
 flowchart LR
-    QA["QA files the bug<br/>(steps, where, test data)"] --> DEV["Dev's AI agent picks the card<br/>over MCP and fixes it"]
-    DEV --> TEST["Card moves to <b>testar</b>"]
-    TEST --> CHECK{"QA checks<br/>in the browser"}
-    CHECK -- Passou --> OK["<b>ok</b> ✅"]
-    CHECK -- Falhou --> BACK["<b>falhou</b> + reason<br/>(screenshots, AI prompt)"]
-    BACK --> DEV
+    QA(["🐞 <b>QA files the bug</b><br/><small>steps · environment · test data</small>"])
+    DEV(["🤖 <b>Dev's AI agent fixes it</b><br/><small>reads the card over MCP</small>"])
+    TEST(["🧪 <b>Ready to test</b>"])
+    CHECK{"👀 <b>QA review</b>"}
+    OK(["✅ <b>Done</b>"])
+    BACK(["🔁 <b>Back to dev</b><br/><small>reason · screenshots · AI prompt</small>"])
+
+    QA --> DEV --> TEST --> CHECK
+    CHECK -->|Pass| OK
+    CHECK -->|Fail| BACK
+    BACK -.->|next round| DEV
+
+    classDef qa fill:#7c3aed,stroke:#5b21b6,color:#fff
+    classDef dev fill:#2563eb,stroke:#1e40af,color:#fff
+    classDef test fill:#d97706,stroke:#92400e,color:#fff
+    classDef review fill:#334155,stroke:#0f172a,color:#fff
+    classDef pass fill:#16a34a,stroke:#166534,color:#fff
+    classDef fail fill:#dc2626,stroke:#991b1b,color:#fff
+
+    class QA qa
+    class DEV dev
+    class TEST test
+    class CHECK review
+    class OK pass
+    class BACK fail
 ```
 
 1. **QA points out the defect.** One card per bug, with numbered repro steps, the environment (`where`), and the test data (`prep`).
 2. **The dev fixes it from the card.** The AI agent (Claude Code, Cursor or any MCP client) reads the card, changes the code, records `fix`, `files` and `symbols`, and sets the card to `testar`.
-3. **QA validates.** **Passou** closes it as `ok`. **Falhou** asks for a reason (you can paste screenshots), offers a ready-made prompt to hand back to the AI, and the card returns to the dev with its `round` counter increased.
+3. **QA validates.** **Pass** closes it as `ok`. **Fail** asks for a reason (you can paste screenshots), offers a ready-made prompt to hand back to the AI, and the card returns to the dev with its `round` counter increased.
 
 ## Why Bugboard
 
