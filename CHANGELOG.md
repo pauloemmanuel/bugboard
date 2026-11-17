@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Paste or drop screenshots into the **Falhou** reason: they upload as `[Imagem #N]` tokens, show as thumbnails, and their paths go into the AI prompt
+- Smart copy chips in **Preparação**, grouped by label (e-mail, password, URL, command, id)
 - `cancelado` status for cards that no longer make sense (the screen changed, the button is gone, or the AI got the scenario wrong): **Cancelar card** button with quick reasons in the web UI, `bug_cancel` MCP tool, `POST /api/bugs/:id/cancel`, and a `cancelado` count in stats
 - Cancelled cards are hidden from **Todos**, listed under the **Cancelado** filter, left out of journey progress (`3/7 ok`), and can be reopened
 - Language selector in the header with the 10 most spoken languages (English, 中文, हिन्दी, Español, Français, العربية, বাংলা, Português, Русский, اردو). English is the default, the choice is remembered per browser, and Arabic and Urdu switch the page to right to left
