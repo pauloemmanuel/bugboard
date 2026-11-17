@@ -171,8 +171,46 @@ export function getDb(): Database.Database {
   _db.exec(SCHEMA_SQL);
   migrateBugsTable(_db);
   seedIfEmpty(_db);
+  syncAllJourneyStatuses(_db);
   return _db;
 }
+
+/**
+ * A journey with use cases mirrors them (cancelled ones ignored):
+ * any fazendo -> fazendo, else any testar -> testar, else any falhou -> falhou, else all ok -> ok.
+ * Without active children the journey keeps whatever status it was given.
+ */
+export function rollupStatus(children: BugStatus[]): BugStatus | null {
+  const active = children.filter((s) => s !== "cancelado");
+  if (active.length === 0) return null;
+  for (const s of ["fazendo", "testar", "falhou"] as const) {
+    if (active.includes(s)) return s;
+  }
+  return "ok";
+}
+
+function syncJourneyStatus(db: Database.Database, parentId: string | null | undefined): void {
+  if (!parentId) return;
+  const kids = db.prepare("SELECT status FROM bugs WHERE parent_id = ?").all(parentId) as {
+    status: BugStatus;
+  }[];
+  const next = rollupStatus(kids.map((k) => k.status));
+  if (!next) return;
+  db.prepare("UPDATE bugs SET status = ?, updated_at = ? WHERE id = ? AND status <> ?").run(
+    next,
+    nowIso(),
+    parentId,
+    next,
+  );
+}
+
+function syncAllJourneyStatuses(db: Database.Database): void {
+  const parents = db
+    .prepare("SELECT DISTINCT parent_id AS id FROM bugs WHERE parent_id IS NOT NULL")
+    .all() as { id: string }[];
+  for (const p of parents) syncJourneyStatus(db, p.id);
+}
+
 
 function seedIfEmpty(db: Database.Database): void {
   const count = db.prepare("SELECT COUNT(*) AS c FROM sheets").get() as { c: number };
@@ -474,6 +512,7 @@ export function createBug(sheetId: string, input: CreateBugInput): Bug | null {
     t,
     t,
   );
+  syncJourneyStatus(db, input.parent_id);
   bumpWrite();
   return getBug(id);
 }
@@ -536,6 +575,7 @@ export function updateBug(id: string, input: UpdateBugInput): Bug | null {
     t,
     id,
   );
+  if (input.status !== undefined) syncJourneyStatus(db, existing.parent_id);
   bumpWrite();
   return getBug(id);
 }
@@ -551,6 +591,7 @@ export function passBug(id: string, note?: string): Bug | null {
     t,
     id,
   );
+  syncJourneyStatus(db, existing.parent_id);
   bumpWrite();
   return getBug(id);
 }
@@ -566,6 +607,7 @@ export function failBug(id: string, note?: string): Bug | null {
     t,
     id,
   );
+  syncJourneyStatus(db, existing.parent_id);
   bumpWrite();
   return getBug(id);
 }
@@ -581,6 +623,7 @@ export function cancelBug(id: string, note?: string): Bug | null {
     nowIso(),
     id,
   );
+  syncJourneyStatus(db, existing.parent_id);
   bumpWrite();
   return getBug(id);
 }

@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Journey (epic) cards stayed `fazendo` after all their use cases moved to `testar`. A journey's status now follows its use cases (cancelled ones ignored) on every change, and existing boards are synced on startup
 - Web card handler types (`onFailClick`) and the status filter type predicate now type-check under strict mode
 
 ## [0.4.0] - 2026-11-13

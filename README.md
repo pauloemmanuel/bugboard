@@ -85,7 +85,7 @@ Create **sheets** (tabs) for a project, a release or a device matrix, then add c
 
 ## Journeys and use cases
 
-**Journey** cards (`kind: journey`, `parent_id` null) group a device or platform run (e.g. iOS release 2.3). **Use case** cards (`kind: usecase`, `parent_id` set) are atomic flows inside that journey (signup, chat, wallet). Each use case has its own status, steps, and pass/fail; one failure does not block the whole journey. Journey cards show child progress (`3/7 ok`) from use case statuses; marking a journey **Passou** does not auto-pass children.
+**Journey** cards (`kind: journey`, `parent_id` null) group a device or platform run (e.g. iOS release 2.3). **Use case** cards (`kind: usecase`, `parent_id` set) are atomic flows inside that journey (signup, chat, wallet). Each use case has its own status, steps, and pass/fail; one failure does not block the whole journey. Journey cards show child progress (`3/7 ok`) from use case statuses; marking a journey **Passou** does not auto-pass children. The journey's own status follows its use cases (cancelled ones ignored): any `fazendo` keeps it `fazendo`, otherwise any `testar` makes it `testar`, otherwise any `falhou` makes it `falhou`, and it turns `ok` once every use case is `ok`.
 
 `prep` is a string array of test data the agent should fill (emails, MFA codes, package names, URLs). The UI shows **Preparação** on use cases.
 
