@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-17
+
 ### Added
 
 - `cancelado` status for cards that no longer make sense (the screen changed, the button is gone, or the AI got the scenario wrong): **Cancelar card** button with quick reasons in the web UI, `bug_cancel` MCP tool, `POST /api/bugs/:id/cancel`, and a `cancelado` count in stats
